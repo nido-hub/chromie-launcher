@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Data/catalog.json" />
+    <EmbeddedResource Include="Data/update-public-key.pem" />
+  </ItemGroup>
+</Project>

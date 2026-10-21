@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ChromieLauncher.Core/ChromieLauncher.Core.csproj" />
+    <Project Path="src/ChromieLauncher.Desktop/ChromieLauncher.Desktop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ChromieLauncher.Tests/ChromieLauncher.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/ChromieLauncher.Release/ChromieLauncher.Release.csproj" />
+  </Folder>
+</Solution>

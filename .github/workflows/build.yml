@@ -1,0 +1,33 @@
+name: Build Windows desktop
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Tests
+        run: dotnet test tests/ChromieLauncher.Tests/ChromieLauncher.Tests.csproj -c Release
+      - name: Native AOT
+        shell: pwsh
+        run: ./tools/publish.ps1 -Native
+      - name: Desktop smoke test (read-only)
+        shell: pwsh
+        run: |
+          $process = Start-Process ./dist/win-x64/ChromieLauncher.exe -ArgumentList '--smoke-test', "$pwd/artifacts/desktop.png" -PassThru -Wait
+          if ($process.ExitCode -ne 0 -or !(Test-Path ./artifacts/desktop.png)) { throw 'Desktop smoke test failed' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChromieLauncher-win-x64-native
+          path: |
+            dist/win-x64/
+            artifacts/
