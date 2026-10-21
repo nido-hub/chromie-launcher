@@ -1,6 +1,8 @@
 name: Build Windows desktop
 on:
   push:
+    branches:
+      - '**'
   pull_request:
   workflow_dispatch:
 

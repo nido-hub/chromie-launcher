@@ -6,13 +6,21 @@ Application desktop Windows en français pour ChromieCraft / WoW **3.3.5a**. Pro
 
 Ouvrir **`dist\win-x64\ChromieLauncher.exe`**, ou double-cliquer sur **`Lancer ChromieLauncher.cmd`**. Le dossier du jeu est recherché dans les dossiers parents ; sinon le sélectionner dans **Paramètres**. Le launcher doit rester dans son propre dossier, pas directement à côté de `Wow.exe`.
 
-La version `0.1.0` présente dans `dist\win-x64` a été **compilée en Native AOT pour Windows x64**. Elle peut être lancée sans installer .NET. Conserver les DLL natives du dossier à côté de l’exécutable.
+La version `0.2.0` présente dans `dist\win-x64` a été **compilée en Native AOT pour Windows x64**. Elle peut être lancée sans installer .NET. Conserver les DLL natives du dossier à côté de l’exécutable.
 
 - **Mes addons** : détection des dossiers et métadonnées TOC, versions inconnues conservées comme telles, modules Blizzard masqués. Ouvrir ou retirer un addon.
 - **Bibliothèque** : recherche, catégories, packs multi-dossiers, dépendances obligatoires, installation avec confirmation.
 - **Téléchargements** : historique de session et accès aux sauvegardes. Annulation du téléchargement avant le remplacement des fichiers.
 - **Paramètres** : chemin du jeu, flux de mises à jour signé, vérification au démarrage.
 - **Jouer** : lancement de `Wow.exe` avec le bon répertoire de travail.
+
+## Identité visuelle
+
+L’interface reprend les codes du [site ChromieCraft](https://chromiecraft.com/en/) : fond illustré sombre, logo et emblème, navigation horizontale, titres en **Marcellus SC**, texte en **Roboto Condensed**, touches dorées et bleu glacier, boutons encadrés. Le contraste des panneaux reste adapté à la gestion des addons.
+
+Les images et les polices sont embarquées : **aucun accès au site ni téléchargement de ressources graphiques n’est nécessaire à l’exécution**. Les deux polices sont fournies avec leur licence SIL OFL. Les visuels et marques appartiennent à leurs ayants droit ; leur réutilisation publique nécessite de vérifier les autorisations. Les sources et mentions sont dans `src/ChromieLauncher.Desktop/Assets/NOTICE.md`. Le launcher conserve sa mention de projet indépendant, non affilié.
+
+Pour régénérer ces ressources uniquement en développement : `python tools/fetch_design_assets.py` (Python 3.11+, Pillow et fontTools). La compilation .NET utilise directement les fichiers déjà présents dans le dépôt et ne nécessite pas Python.
 
 ## Provenance du catalogue — attention
 
@@ -42,7 +50,10 @@ Prérequis : **SDK .NET 10**. Aucune installation du runtime n’est requise sur
 dotnet build src/ChromieLauncher.Desktop/ChromieLauncher.Desktop.csproj
 dotnet test tests/ChromieLauncher.Tests/ChromieLauncher.Tests.csproj
 ./tools/publish.ps1
+./tools/package.ps1
 ```
+
+Le script de publication lit la version dans `Directory.Build.props` sauf si `-Version` est fourni. `package.ps1` prépare le ZIP et son SHA-256 dans `artifacts`, avec les mentions des ressources graphiques et les licences des polices. Un tag `vMAJOR.MINOR.PATCH` correspondant à la version du projet déclenche le workflow `.github/workflows/release.yml` : tests, compilation Native AOT, contrôle desktop, puis publication de la release GitHub.
 
 ### Native AOT
 

@@ -1,0 +1,71 @@
+name: Release Windows desktop
+
+on:
+  push:
+    tags:
+      - 'v[0-9]*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Read release version
+        id: version
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v(\d+\.\d+\.\d+)$') { throw 'Expected a stable vMAJOR.MINOR.PATCH tag' }
+          $version = $Matches[1]
+          [xml]$properties = Get-Content Directory.Build.props -Raw
+          if ($properties.Project.PropertyGroup.Version -ne $version) { throw 'Tag and project version do not match' }
+          "value=$version" >> $env:GITHUB_OUTPUT
+      - name: Tests
+        run: dotnet test tests/ChromieLauncher.Tests/ChromieLauncher.Tests.csproj -c Release
+      - name: Compile Native AOT
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+        run: ./tools/publish.ps1 -Native -Version $env:RELEASE_VERSION
+      - name: Desktop smoke test
+        shell: pwsh
+        run: |
+          $image = Join-Path $pwd 'artifacts/desktop.png'
+          $process = Start-Process ./dist/win-x64/ChromieLauncher.exe -ArgumentList '--smoke-test', ('"{0}"' -f $image) -PassThru -Wait
+          if ($process.ExitCode -ne 0 -or !(Test-Path ./artifacts/desktop-smoke.txt)) { throw 'Native desktop smoke test failed' }
+      - name: Package application and checksum
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+        run: ./tools/package.ps1 -Version $env:RELEASE_VERSION
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $zip = "artifacts/ChromieLauncher-$env:RELEASE_VERSION-win-x64.zip"
+          $notes = "docs/releases/$env:RELEASE_TAG.md"
+          $arguments = @('release', 'create', $env:RELEASE_TAG, $zip, "$zip.sha256", '--verify-tag', '--title', "Chromie Launcher $env:RELEASE_VERSION", '--latest')
+          if (Test-Path $notes) { $arguments += @('--notes-file', $notes) } else { $arguments += '--generate-notes' }
+          & gh @arguments
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub release publication failed' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-validation-${{ github.ref_name }}
+          path: artifacts/

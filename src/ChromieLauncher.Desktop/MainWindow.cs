@@ -12,25 +12,25 @@ namespace ChromieLauncher.Desktop;
 
 public sealed class MainWindow : Window
 {
-    private static readonly IBrush Muted = Brush.Parse("#999CAF");
-    private static readonly IBrush Surface = Brush.Parse("#20222D");
-    private static readonly IBrush Line = Brush.Parse("#30323E");
+    private static readonly IBrush Muted = LauncherTheme.Muted;
+    private static readonly IBrush Surface = LauncherTheme.Surface;
+    private static readonly IBrush Line = LauncherTheme.Border;
     private readonly Storage _storage = new();
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromMinutes(3) };
     private readonly Catalog _catalog = CatalogService.Load();
     private readonly Settings _settings;
     private readonly AddonService _addons;
     private readonly UpdateService _updater;
-    private readonly Grid _root = new() { ColumnDefinitions = new("224,*"), Background = Brush.Parse("#181A23") };
-    private readonly StackPanel _navigation = new() { Spacing = 8 };
+    private readonly Grid _root = new() { RowDefinitions = new("76,*"), Background = LauncherTheme.Background, ClipToBounds = true };
+    private readonly StackPanel _navigation = new() { Orientation = Orientation.Horizontal, Spacing = 2 };
     private readonly DockPanel _body = new() { LastChildFill = true };
     private readonly StackPanel _list = new() { Spacing = 10 };
-    private readonly TextBlock _heading = Text("Mes addons", 28, FontWeight.SemiBold);
-    private readonly TextBlock _subtitle = Text("", 13, color: Muted);
-    private readonly TextBlock _status = Text("Prêt", 12, color: Muted);
+    private readonly TextBlock _heading = Heading("Mes addons", 34);
+    private readonly TextBlock _subtitle = Text("", 15, color: Muted);
+    private readonly TextBlock _status = Text("Prêt", 13, color: Muted);
     private readonly TextBlock _count = Text("", 13, color: Muted);
-    private readonly TextBox _search = new() { Watermark = "Rechercher un addon…", MinWidth = 260, CornerRadius = new(8) };
-    private readonly ComboBox _category = new() { MinWidth = 180, CornerRadius = new(8) };
+    private readonly TextBox _search = new() { Watermark = "Rechercher un addon…", MinWidth = 260, CornerRadius = new(2) };
+    private readonly ComboBox _category = new() { MinWidth = 180, CornerRadius = new(2) };
     private readonly Button _play = Button("Jouer à ChromieCraft", "primary");
     private readonly Button _refresh = Button("Actualiser");
     private readonly Button _update = Button("Mises à jour");
@@ -44,14 +44,16 @@ public sealed class MainWindow : Window
     private bool _busy;
     private CancellationTokenSource? _operation;
     private string? _preparedUpdate;
+    private Grid? _stats;
 
     public MainWindow()
     {
         Title = "Chromie Launcher";
-        Width = 1220; Height = 820; MinWidth = 980; MinHeight = 650;
+        Width = 1280; Height = 900; MinWidth = 1100; MinHeight = 760;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        Background = Brush.Parse("#181A23");
-        FontFamily = new("Segoe UI");
+        Background = LauncherTheme.Background;
+        FontFamily = LauncherTheme.BodyFont;
+        Foreground = LauncherTheme.Text;
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("ChromieLauncher/" + UpdateService.DisplayVersion);
         _settings = _storage.LoadSettings();
         if (string.IsNullOrEmpty(_settings.GamePath)) _settings.GamePath = DetectGame();
@@ -80,40 +82,71 @@ public sealed class MainWindow : Window
 
     private void BuildLayout()
     {
-        var rail = new DockPanel { Margin = new(18, 28) };
-        var brand = new StackPanel { Spacing = 5, Margin = new(12, 0, 0, 32) };
-        brand.Children.Add(Text("◈  CHROMIE", 23, FontWeight.Bold, Brush.Parse("#C4B5FD")));
-        brand.Children.Add(Text("      L A U N C H E R", 11, color: Muted));
-        DockPanel.SetDock(brand, Dock.Top); rail.Children.Add(brand);
-        var footer = new StackPanel { Spacing = 10, Margin = new(12, 20, 0, 0) };
-        footer.Children.Add(Text("WOTLK  ·  3.3.5a", 12, FontWeight.SemiBold, Brush.Parse("#D7B778")));
-        footer.Children.Add(Text("Version " + UpdateService.DisplayVersion, 12, color: Muted));
-        footer.Children.Add(Text("Projet communautaire indépendant\nNon affilié à ChromieCraft", 10, color: Muted));
-        DockPanel.SetDock(footer, Dock.Bottom); rail.Children.Add(footer);
-        foreach (var (title, symbol) in new[] { ("Mes addons", "▤"), ("Bibliothèque", "▦"), ("Téléchargements", "↓"), ("Paramètres", "⚙") })
+        var artwork = new Image { Source = LauncherTheme.Bitmap("lich-background.jpg"), Stretch = Stretch.UniformToFill, Opacity = 0.58 };
+        Grid.SetRowSpan(artwork, 2); _root.Children.Add(artwork);
+        var shade = new Border { Background = LauncherTheme.Shade((0, "#700E0E0E"), (0.35, "#700E0E0E"), (1, "#F20E0E0E")), IsHitTestVisible = false };
+        Grid.SetRowSpan(shade, 2); _root.Children.Add(shade);
+
+        var navbar = new Grid { ColumnDefinitions = new("Auto,*,Auto"), Margin = new(28, 0) };
+        var brand = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new(0, 0, 26, 0) };
+        brand.Children.Add(LauncherTheme.Image("chromiecraft-emblem.png", 42, 48));
+        var brandCopy = new StackPanel { Spacing = 3, VerticalAlignment = VerticalAlignment.Center };
+        brandCopy.Children.Add(Heading("Chromie Launcher", 19));
+        brandCopy.Children.Add(Text("POUR CHROMIECRAFT  ·  3.3.5a", 10, color: LauncherTheme.Gold));
+        brand.Children.Add(brandCopy); navbar.Children.Add(brand);
+        foreach (var title in new[] { "Mes addons", "Bibliothèque", "Téléchargements", "Paramètres" })
         {
-            var button = Button(symbol + "   " + title, "nav");
+            var button = Button(title, "nav");
             button.Tag = title;
             button.HorizontalAlignment = HorizontalAlignment.Stretch;
             button.Click += (_, _) => Navigate(title);
             _navButtons.Add(button); _navigation.Children.Add(button);
         }
-        rail.Children.Add(_navigation);
-        _root.Children.Add(new Border { Background = Brush.Parse("#12131A"), BorderBrush = Line, BorderThickness = new(0, 0, 1, 0), Child = rail });
+        _navigation.HorizontalAlignment = HorizontalAlignment.Center;
+        _navigation.VerticalAlignment = VerticalAlignment.Stretch;
+        Grid.SetColumn(_navigation, 1); navbar.Children.Add(_navigation);
+        _update.VerticalAlignment = VerticalAlignment.Center; _update.Margin = new(20, 0, 0, 0);
+        Grid.SetColumn(_update, 2); navbar.Children.Add(_update);
+        _root.Children.Add(new Border { Background = Brush.Parse("#F20E0E0E"), BorderBrush = Brush.Parse("#685E4C"), BorderThickness = new(0, 0, 0, 1), Child = navbar });
 
-        var content = new Grid { RowDefinitions = new("Auto,*,Auto"), Margin = new(32, 26, 32, 18) };
-        Grid.SetColumn(content, 1); _root.Children.Add(content);
-        var header = new Grid { ColumnDefinitions = new("*,Auto"), Margin = new(0, 0, 0, 24) };
-        var titles = new StackPanel { Spacing = 6 }; titles.Children.Add(_heading); titles.Children.Add(_subtitle); header.Children.Add(titles);
-        var headerActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, VerticalAlignment = VerticalAlignment.Center };
-        headerActions.Children.Add(_update); headerActions.Children.Add(_play); Grid.SetColumn(headerActions, 1); header.Children.Add(headerActions);
-        content.Children.Add(header);
+        var content = new Grid { RowDefinitions = new("Auto,*,Auto"), Margin = new(38, 24, 38, 18) };
+        Grid.SetRow(content, 1); _root.Children.Add(content);
+        var header = new Grid { ColumnDefinitions = new("*,260"), MinHeight = 150, Margin = new(26, 16) };
+        var titles = new StackPanel { Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        var eyebrow = Text("VOTRE COMPAGNON EN AZEROTH", 11, color: LauncherTheme.Gold);
+        titles.Children.Add(eyebrow);
+        titles.Children.Add(_heading); _subtitle.TextWrapping = TextWrapping.Wrap; titles.Children.Add(_subtitle); header.Children.Add(titles);
+        var headerActions = new StackPanel { Spacing = 9, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+        var wordmark = LauncherTheme.Image("chromiecraft-wordmark.png", 230, 72);
+        headerActions.Children.Add(wordmark);
+        _play.HorizontalAlignment = HorizontalAlignment.Stretch; headerActions.Children.Add(_play);
+        Grid.SetColumn(headerActions, 1); header.Children.Add(headerActions);
+        content.Children.Add(new Border
+        {
+            Background = LauncherTheme.Shade((0, "#450E0E0E"), (1, "#D90E0E0E")),
+            BorderBrush = Brush.Parse("#8A756044"), BorderThickness = new(1), CornerRadius = new(2),
+            Margin = new(0, 0, 0, 20), Child = header
+        });
+        void UpdateDensity()
+        {
+            var compact = Bounds.Height > 0 ? Bounds.Height < 820 : Height < 820;
+            header.MinHeight = compact ? 110 : 150;
+            header.Margin = new(26, compact ? 10 : 16);
+            wordmark.Height = compact ? 46 : 72;
+            eyebrow.IsVisible = !compact;
+            _heading.FontSize = compact ? 30 : 34;
+            if (_stats is not null) _stats.IsVisible = !compact;
+        }
+        SizeChanged += (_, _) => UpdateDensity();
+        UpdateDensity();
         Grid.SetRow(_body, 1); content.Children.Add(_body);
         var statusPanel = new Grid { RowDefinitions = new("Auto,Auto"), Margin = new(0, 16, 0, 0) };
         statusPanel.Children.Add(_progress);
-        var bottom = new Grid { ColumnDefinitions = new("*,Auto"), Margin = new(0, 10, 0, 0) };
+        var bottom = new Grid { ColumnDefinitions = new("*,Auto,Auto"), ColumnSpacing = 20, Margin = new(0, 10, 0, 0) };
         _status.TextWrapping = TextWrapping.Wrap; bottom.Children.Add(_status);
         _cancel.IsVisible = false; Grid.SetColumn(_cancel, 1); bottom.Children.Add(_cancel);
+        var footer = Text("v" + UpdateService.DisplayVersion + "  ·  Projet indépendant, non affilié à ChromieCraft", 11, color: Muted);
+        footer.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(footer, 2); bottom.Children.Add(footer);
         Grid.SetRow(bottom, 1); statusPanel.Children.Add(bottom);
         Grid.SetRow(statusPanel, 2); content.Children.Add(statusPanel);
     }
@@ -143,11 +176,13 @@ public sealed class MainWindow : Window
     private void RenderAddonPage()
     {
         var stats = new Grid { ColumnDefinitions = new("*,*,*"), ColumnSpacing = 12 };
+        _stats = stats;
+        stats.IsVisible = Bounds.Height > 0 ? Bounds.Height >= 820 : Height >= 820;
         var items = new[] { (_installed.Count.ToString(), "addons locaux détectés"), (_catalog.Packages.Count.ToString(), "packs dans l’archive"), ("Protégés", "réglages WTF conservés") };
         for (var i = 0; i < items.Length; i++)
         {
             var stack = new StackPanel { Spacing = 4 };
-            stack.Children.Add(Text(items[i].Item1, 23, FontWeight.SemiBold, i == 2 ? Brush.Parse("#7DD3B0") : Brushes.White));
+            stack.Children.Add(Heading(items[i].Item1, 26, i == 2 ? LauncherTheme.Ice : LauncherTheme.Gold));
             stack.Children.Add(Text(items[i].Item2, 12, color: Muted));
             var card = Card(stack); Grid.SetColumn(card, i); stats.Children.Add(card);
         }
@@ -202,9 +237,9 @@ public sealed class MainWindow : Window
         var row = new Grid { ColumnDefinitions = new("48,*,Auto"), ColumnSpacing = 14 };
         row.Children.Add(Monogram(addon.Name, addon.Managed));
         var text = new StackPanel { Spacing = 5 };
-        text.Children.Add(Text(addon.Name, 15, FontWeight.SemiBold));
-        text.Children.Add(Text($"{addon.Folder}  ·  Version {addon.Version}  ·  Interface {addon.Interface}", 11, color: Muted));
-        text.Children.Add(Text(addon.Status, 11, color: addon.Managed ? Brush.Parse("#7DD3B0") : Brush.Parse("#D7B778")));
+        text.Children.Add(Text(addon.Name, 16, FontWeight.SemiBold));
+        text.Children.Add(Text($"{addon.Folder}  ·  Version {addon.Version}  ·  Interface {addon.Interface}", 13, color: Muted));
+        text.Children.Add(Text(addon.Status, 12, color: addon.Managed ? LauncherTheme.Success : LauncherTheme.Gold));
         Grid.SetColumn(text, 1); row.Children.Add(text);
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
         var folder = Button("Ouvrir"); folder.Click += (_, _) => OpenFolder(SafePath.Child(AddonService.ValidateGame(_settings.GamePath), "Interface/AddOns/" + addon.Folder));
@@ -221,9 +256,9 @@ public sealed class MainWindow : Window
         var row = new Grid { ColumnDefinitions = new("48,*,Auto"), ColumnSpacing = 14 };
         row.Children.Add(Monogram(package.Name, existing));
         var text = new StackPanel { Spacing = 5 };
-        text.Children.Add(Text(package.Name, 15, FontWeight.SemiBold));
-        var description = Text(package.Description, 12, color: Muted); description.TextWrapping = TextWrapping.Wrap; description.MaxLines = 2; description.TextTrimming = TextTrimming.CharacterEllipsis; text.Children.Add(description);
-        text.Children.Add(Text($"{package.Category}  ·  {package.Version}  ·  {package.Folders.Count} dossier(s)", 11, color: Brush.Parse("#B8A4E9")));
+        text.Children.Add(Text(package.Name, 16, FontWeight.SemiBold));
+        var description = Text(package.Description, 14, color: Muted); description.TextWrapping = TextWrapping.Wrap; description.MaxLines = 2; description.TextTrimming = TextTrimming.CharacterEllipsis; text.Children.Add(description);
+        text.Children.Add(Text($"{package.Category}  ·  {package.Version}  ·  {package.Folders.Count} dossier(s)", 12, color: LauncherTheme.Gold));
         Grid.SetColumn(text, 1); row.Children.Add(text);
         var action = Button(current ? "Installé" : managed is not null ? "Actualiser" : existing ? "Remplacer…" : "Installer", current ? null : "primary");
         action.IsEnabled = !current; action.MinWidth = 112; action.VerticalAlignment = VerticalAlignment.Center;
@@ -235,9 +270,9 @@ public sealed class MainWindow : Window
     private void RenderSettings()
     {
         var fields = new StackPanel { Spacing = 16 };
-        fields.Children.Add(Text("Installation de World of Warcraft", 18, FontWeight.SemiBold));
+        fields.Children.Add(Heading("Installation de World of Warcraft", 20));
         fields.Children.Add(Text("Sélectionne le dossier contenant Wow.exe. Aucun fichier WTF ne sera modifié.", 12, color: Muted));
-        var path = new TextBox { Text = _settings.GamePath, Watermark = "C:\\Jeux\\ChromieCraft", CornerRadius = new(8) };
+        var path = new TextBox { Text = _settings.GamePath, Watermark = "C:\\Jeux\\ChromieCraft", CornerRadius = new(2) };
         var browse = Button("Parcourir…");
         browse.Click += async (_, _) =>
         {
@@ -246,11 +281,11 @@ public sealed class MainWindow : Window
         };
         fields.Children.Add(path); fields.Children.Add(browse);
         fields.Children.Add(new Border { Height = 1, Background = Line, Margin = new(0, 8) });
-        fields.Children.Add(Text("Mises à jour intégrées du launcher", 18, FontWeight.SemiBold));
+        fields.Children.Add(Heading("Mises à jour intégrées du launcher", 20));
         fields.Children.Add(Text("Détection automatique, téléchargement vérifié et redémarrage depuis cette application.", 12, color: Muted));
         var automatic = new CheckBox { Content = "Vérifier les mises à jour au démarrage", IsChecked = _settings.CheckUpdatesAtStartup };
         fields.Children.Add(automatic);
-        var feed = new TextBox { Text = _settings.UpdateFeedUrl, Watermark = "https://…/update.json", CornerRadius = new(8) };
+        var feed = new TextBox { Text = _settings.UpdateFeedUrl, Watermark = "https://…/update.json", CornerRadius = new(2) };
         fields.Children.Add(Text("Adresse du manifeste signé de l’éditeur", 12, color: Muted)); fields.Children.Add(feed);
         fields.Children.Add(Notice("VERSION DE DÉVELOPPEMENT", "Le mécanisme de mise à jour est intégré. Sa distribution nécessite un hébergement des releases et une clé publique de signature intégrée à la compilation. Aucun téléchargement de logiciel non signé n’est autorisé."));
         var save = Button("Enregistrer les paramètres", "primary");
@@ -322,7 +357,11 @@ public sealed class MainWindow : Window
             await Task.Delay(100);
             if (!_count.Text!.StartsWith("0 packs")) throw new InvalidOperationException("Le filtre vide ne fonctionne pas.");
             _search.Text = ""; await Task.Delay(100); Navigate("Mes addons");
-            File.WriteAllText(Path.Combine(directory, stem + "-smoke.txt"), $"OK — navigation 4 pages, recherche, {_installed.Count} addons détectés, {_catalog.Packages.Count} packs. Aucune modification du jeu.");
+            Width = MinWidth; Height = MinHeight; Navigate("Bibliothèque"); await Task.Delay(200);
+            if (_navigation.Bounds.Right > _update.Bounds.Left)
+                throw new InvalidOperationException("La navigation chevauche le bouton de mise à jour à la taille minimale.");
+            Capture(Path.Combine(directory, stem + "-compact.png"));
+            File.WriteAllText(Path.Combine(directory, stem + "-smoke.txt"), $"OK — navigation 4 pages, recherche, taille minimale {MinWidth}×{MinHeight}, {_installed.Count} addons détectés, {_catalog.Packages.Count} packs. Aucune modification du jeu.");
         }
         catch (Exception error)
         {
@@ -398,7 +437,8 @@ public sealed class MainWindow : Window
         await Run("Téléchargement du launcher", async () =>
         {
             _preparedUpdate = await _updater.PrepareAsync(update.Envelope, new Progress<string>(text => _status.Text = text), _operation!.Token);
-            _update.Content = "Redémarrer pour mettre à jour";
+            _update.Content = "Redémarrer";
+            ToolTip.SetTip(_update, "Redémarrer pour appliquer la mise à jour du launcher");
         }, cancellable: true);
     }
 
@@ -459,9 +499,9 @@ public sealed class MainWindow : Window
 
     private async Task<bool> Confirm(string title, string message, string action)
     {
-        var dialog = new Window { Title = title, Width = 580, SizeToContent = SizeToContent.Height, CanResize = false, WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = Brush.Parse("#20222D") };
+        var dialog = new Window { Title = title, Width = 620, SizeToContent = SizeToContent.Height, CanResize = false, WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = LauncherTheme.Background, FontFamily = LauncherTheme.BodyFont };
         var panel = new StackPanel { Spacing = 20, Margin = new(28) };
-        panel.Children.Add(Text(title, 22, FontWeight.SemiBold));
+        panel.Children.Add(Heading(title, 24, LauncherTheme.Gold));
         var copy = Text(message, 13, color: Muted); copy.TextWrapping = TextWrapping.Wrap;
         panel.Children.Add(new ScrollViewer { Content = copy, MaxHeight = 350 });
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, HorizontalAlignment = HorizontalAlignment.Right };
@@ -481,32 +521,35 @@ public sealed class MainWindow : Window
 
     private static bool Contains(string text, string query) => text.Contains(query, StringComparison.CurrentCultureIgnoreCase);
     private static TextBlock Text(string text, double size = 14, FontWeight? weight = null, IBrush? color = null) => new()
-    { Text = text, FontSize = size, FontWeight = weight ?? FontWeight.Normal, Foreground = color ?? Brushes.White };
+    { Text = text, FontFamily = LauncherTheme.BodyFont, FontSize = size, FontWeight = weight ?? FontWeight.Normal, Foreground = color ?? LauncherTheme.Text };
+    private static TextBlock Heading(string text, double size, IBrush? color = null) => new()
+    { Text = text, FontFamily = LauncherTheme.HeadingFont, FontSize = size, Foreground = color ?? LauncherTheme.Text };
     private static Button Button(string text, string? style = null)
     {
         var button = new Button { Content = text };
         if (style is not null) button.Classes.Add(style);
         return button;
     }
-    private static Border Card(Control content) => new() { Background = Surface, BorderBrush = Line, BorderThickness = new(1), CornerRadius = new(12), Padding = new(18), Child = content };
+    private static Border Card(Control content) => new() { Background = Surface, BorderBrush = Line, BorderThickness = new(1), CornerRadius = new(3), Padding = new(18, 14), Child = content };
     private static Border Notice(string title, string message)
     {
         var stack = new StackPanel { Spacing = 6 };
-        stack.Children.Add(Text(title, 10, FontWeight.Bold, Brush.Parse("#D7B778")));
-        var body = Text(message, 12, color: Muted); body.TextWrapping = TextWrapping.Wrap; stack.Children.Add(body);
-        return new Border { Background = Brush.Parse("#27251F"), BorderBrush = Brush.Parse("#49402D"), BorderThickness = new(1), CornerRadius = new(10), Padding = new(16), Child = stack };
+        stack.Children.Add(Heading(title, 11, LauncherTheme.Gold));
+        var body = Text(message, 13, color: Muted); body.TextWrapping = TextWrapping.Wrap; stack.Children.Add(body);
+        return new Border { Background = Brush.Parse("#EC191711"), BorderBrush = Brush.Parse("#6D5B3D"), BorderThickness = new(1, 0, 0, 0), CornerRadius = new(2), Padding = new(16, 12), Child = stack };
     }
     private static Border Empty(string title, string description)
     {
         var stack = new StackPanel { Spacing = 12, Margin = new(12, 25) };
-        stack.Children.Add(Text(title, 18, FontWeight.SemiBold));
+        stack.Children.Add(Heading(title, 20));
         stack.Children.Add(Text(description, 12, color: Muted));
         return Card(stack);
     }
     private static Border Monogram(string name, bool installed) => new()
     {
-        Width = 46, Height = 46, CornerRadius = new(10), VerticalAlignment = VerticalAlignment.Top,
-        Background = Brush.Parse(installed ? "#233B34" : "#332B48"),
-        Child = new TextBlock { Text = name.Length > 0 ? name[..1].ToUpperInvariant() : "?", FontSize = 22, FontWeight = FontWeight.Bold, Foreground = Brush.Parse(installed ? "#7DD3B0" : "#C4B5FD"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
+        Width = 46, Height = 46, CornerRadius = new(2), VerticalAlignment = VerticalAlignment.Top,
+        BorderBrush = Brush.Parse(installed ? "#536A60" : "#796745"), BorderThickness = new(1),
+        Background = LauncherTheme.Shade((0, installed ? "#D926332F" : "#D9342F23"), (1, "#EE111212")),
+        Child = new TextBlock { Text = name.TrimStart('<', ' ', '!', '_') is { Length: > 0 } clean ? clean[..1].ToUpperInvariant() : "?", FontFamily = LauncherTheme.HeadingFont, FontSize = 23, Foreground = installed ? LauncherTheme.Success : LauncherTheme.Gold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
     };
 }

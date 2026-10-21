@@ -9,6 +9,7 @@
     <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
   <ItemGroup>
+    <AvaloniaResource Include="Assets/**" />
     <ProjectReference Include="../ChromieLauncher.Core/ChromieLauncher.Core.csproj" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
