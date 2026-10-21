@@ -6,7 +6,7 @@ Application desktop Windows pour ChromieCraft / WoW **3.3.5a**, disponible en **
 
 Ouvrir **`dist\win-x64\ChromieLauncher.exe`**, ou double-cliquer sur **`Lancer ChromieLauncher.cmd`**. Le dossier du jeu est recherché dans les dossiers parents ; sinon le sélectionner dans **Settings**. Le launcher doit rester dans son propre dossier, pas directement à côté de `Wow.exe`.
 
-La release `0.4.0` est **compilée en Native AOT pour Windows x64**. Elle peut être lancée sans installer .NET. Télécharger le ZIP depuis les [releases GitHub](https://github.com/nido-hub/chromie-launcher/releases/latest) et conserver les DLL natives du dossier à côté de l’exécutable. Pour une compilation locale, utiliser les scripts ci-dessous.
+La release `0.4.1` est **compilée en Native AOT pour Windows x64**. Elle peut être lancée sans installer .NET. Télécharger le ZIP depuis les [releases GitHub](https://github.com/nido-hub/chromie-launcher/releases/latest) et conserver les DLL natives du dossier à côté de l’exécutable. Pour une compilation locale, utiliser les scripts ci-dessous.
 
 - **My addons** : détection des dossiers et métadonnées TOC, versions inconnues conservées comme telles, modules Blizzard masqués. Vérification en ligne au démarrage, mise à jour individuelle ou **Tout mettre à jour** après confirmation. Ouvrir ou retirer un addon.
 - **Library** : recherche, catégories, packs multi-dossiers, dépendances obligatoires, installation avec confirmation et dépôt d’origine visible.
@@ -138,12 +138,12 @@ Le flux contient un manifeste **signé RSA / SHA-256**, avec version, URL HTTPS 
    ```
 
 2. Copier **uniquement la clé publique** dans `src/ChromieLauncher.Core/Data/update-public-key.pem`, puis compiler. Cette même clé doit être incluse dans toutes les releases. Ne jamais publier la clé privée.
-3. Publier le contenu de `dist\win-x64` à la racine d’un ZIP. Pour la version 0.4.0 :
+3. Publier le contenu de `dist\win-x64` à la racine d’un ZIP. Pour la version 0.4.1 :
 
    ```powershell
-   ./tools/publish.ps1 -Native -Version 0.4.0
-   Compress-Archive -Path dist\win-x64\* -DestinationPath ChromieLauncher-0.4.0-win-x64.zip
-   dotnet run --project tools/ChromieLauncher.Release -- sign ChromieLauncher-0.4.0-win-x64.zip https://example.org/ChromieLauncher-0.4.0-win-x64.zip 0.4.0 C:\MesCles\chromie.private.pem update.json "Notes de version"
+    ./tools/publish.ps1 -Native -Version 0.4.1
+    Compress-Archive -Path dist\win-x64\* -DestinationPath ChromieLauncher-0.4.1-win-x64.zip
+    dotnet run --project tools/ChromieLauncher.Release -- sign ChromieLauncher-0.4.1-win-x64.zip https://example.org/ChromieLauncher-0.4.1-win-x64.zip 0.4.1 C:\MesCles\chromie.private.pem update.json "Notes de version"
    ```
 
 4. Pour les releases GitHub, enregistrer le contenu de la clé privée dans le secret de dépôt **`UPDATE_SIGNING_PRIVATE_KEY`** (Settings → Secrets and variables → Actions). Le workflow de release vérifie que ce secret correspond à la clé publique embarquée, compile, signe le manifeste et publie **`update.json` avec le ZIP**. Il refuse de publier si la signature n’est pas configurée. La clé privée temporaire reste hors des artefacts et est supprimée après la signature. Ne pas changer de clé entre deux versions sans prévoir une migration de confiance.
