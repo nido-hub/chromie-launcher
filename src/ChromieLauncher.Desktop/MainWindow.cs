@@ -40,7 +40,7 @@ public sealed class MainWindow : Window
     private readonly Button _play = Button("Play ChromieCraft", "primary");
     private readonly Button _refresh = Button("Refresh");
     private readonly Button _updateAllAddons = Button("Update all addons", "primary");
-    private readonly Button _update = Button("Updates");
+    private readonly Button _update = Button("");
     private readonly Button _cancel = Button("Cancel");
     private readonly ProgressBar _progress = new() { IsIndeterminate = true, Height = 3, IsVisible = false };
     private readonly List<string> _history = [];
@@ -51,6 +51,8 @@ public sealed class MainWindow : Window
     private bool _busy;
     private CancellationTokenSource? _operation;
     private string? _preparedUpdate;
+    private (SignedUpdate Envelope, UpdateRelease Release)? _availableUpdate;
+    private bool _updateFlow;
     private Grid? _stats;
     private TextBlock? _eyebrow;
     private TextBlock? _footer;
@@ -90,8 +92,11 @@ public sealed class MainWindow : Window
         {
             if (!string.IsNullOrEmpty(_settings.GamePath)) await Run(Get("Scanning addons"), ReloadAsync);
             else Navigate("Settings");
-            if (Program.SmokeTestOutput is null && !string.IsNullOrEmpty(_settings.GamePath)) await CheckAddonUpdates();
-            if (_settings.CheckUpdatesAtStartup && !string.IsNullOrEmpty(_settings.UpdateFeedUrl)) await CheckUpdates(true);
+            if (Program.SmokeTestOutput is null)
+            {
+                if (_settings.CheckUpdatesAtStartup && UpdateService.IsConfigured) await CheckUpdates(true);
+                if (!string.IsNullOrEmpty(_settings.GamePath)) await CheckAddonUpdates();
+            }
             if (Program.SmokeTestOutput is not null)
                 DispatcherTimer.RunOnce(() => _ = SmokeTestAsync(), TimeSpan.FromSeconds(2));
         };
@@ -177,13 +182,27 @@ public sealed class MainWindow : Window
         _play.Content = Get("Play ChromieCraft");
         _refresh.Content = Get("Refresh");
         ToolTip.SetTip(_refresh, Get("Scan installed addons and check their sources online"));
-        _update.Content = Get(_preparedUpdate is null ? "Updates" : "Restart");
-        if (_preparedUpdate is not null) ToolTip.SetTip(_update, Get("Restart to apply the launcher update"));
+        RenderUpdateButton();
         _cancel.Content = Get("Cancel");
         _search.Watermark = Get("Search addons…");
         _eyebrow!.Text = Get("YOUR COMPANION IN AZEROTH");
-        _footer!.Text = "v" + UpdateService.DisplayVersion + "  ·  " + Get("Independent project, not affiliated with ChromieCraft");
+        _footer!.Text = Get("Independent project, not affiliated with ChromieCraft");
         _status.Text = Get("Ready");
+    }
+
+    private void RenderUpdateButton()
+    {
+        var ready = _preparedUpdate is not null;
+        var available = _availableUpdate is not null;
+        var label = ready ? "Restart" : available ? "Update" : "Updates";
+        var content = new StackPanel { Spacing = 2, HorizontalAlignment = HorizontalAlignment.Center };
+        content.Children.Add(Text("v" + UpdateService.DisplayVersion, 13));
+        content.Children.Add(Text(Get(label), 10, color: ready || available ? LauncherTheme.Gold : Muted));
+        _update.Content = content;
+        _update.Classes.Set("primary", ready || available);
+        ToolTip.SetTip(_update, ready ? Get("Restart to apply the launcher update")
+            : available ? Format("Version {0} available", _availableUpdate!.Value.Release.Version)
+            : Get("Check for launcher updates"));
     }
 
     private void Navigate(string page)
@@ -412,9 +431,13 @@ public sealed class MainWindow : Window
         fields.Children.Add(Text(Get("Automatic checks, verified downloads and restart from this application."), 12, color: Muted));
         var automatic = new CheckBox { Content = Get("Check for updates at startup"), IsChecked = _settings.CheckUpdatesAtStartup };
         fields.Children.Add(automatic);
-        var feed = new TextBox { Text = _settings.UpdateFeedUrl, Watermark = "https://…/update.json", CornerRadius = new(2) };
-        fields.Children.Add(Text(Get("Publisher's signed update manifest URL"), 12, color: Muted)); fields.Children.Add(feed);
-        fields.Children.Add(Notice("DEVELOPMENT BUILD", "The updater is built in. Distribution requires hosted releases and a publisher signing key embedded at build time. Unsigned software updates are not allowed."));
+        fields.Children.Add(Text(Get("Click the version number to update and restart the launcher. Your addons and game settings are preserved."), 12, color: Muted));
+        var feed = new TextBox { Text = _settings.UpdateFeedUrl, Watermark = UpdateService.DefaultFeedUrl, CornerRadius = new(2) };
+        var advanced = new StackPanel { Spacing = 8 };
+        advanced.Children.Add(Text(Get("Publisher's signed update manifest URL"), 12, color: Muted)); advanced.Children.Add(feed);
+        fields.Children.Add(new Expander { Header = Get("Advanced update settings"), Content = advanced, HorizontalAlignment = HorizontalAlignment.Stretch });
+        if (!UpdateService.IsConfigured)
+            fields.Children.Add(Notice("DEVELOPMENT BUILD", "The updater is built in. Distribution requires hosted releases and a publisher signing key embedded at build time. Unsigned software updates are not allowed."));
         var save = Button("Save settings", "primary");
         save.Click += async (_, _) =>
         {
@@ -425,6 +448,7 @@ public sealed class MainWindow : Window
                 var validated = string.IsNullOrWhiteSpace(path.Text) ? "" : AddonService.ValidateGame(path.Text);
                 var feedUrl = feed.Text?.Trim() ?? "";
                 if (feedUrl.Length > 0 && (!Uri.TryCreate(feedUrl, UriKind.Absolute, out var uri) || uri.Scheme != "https")) throw new IOException(Get("The update feed must use HTTPS."));
+                if (UpdateService.ResolveFeedUrl(_settings.UpdateFeedUrl) != UpdateService.ResolveFeedUrl(feedUrl)) _availableUpdate = null;
                 _settings.GamePath = validated; _settings.UpdateFeedUrl = feedUrl; _settings.CheckUpdatesAtStartup = automatic.IsChecked == true;
                 if (!string.Equals(oldPath, validated, StringComparison.OrdinalIgnoreCase))
                 {
@@ -486,6 +510,8 @@ public sealed class MainWindow : Window
         var savedLanguage = _settings.Language;
         var savedAddonUpdates = _availableAddonUpdates;
         var savedAddonCheck = _lastAddonCheck;
+        var savedLauncherUpdate = _availableUpdate;
+        var savedPreparedUpdate = _preparedUpdate;
         Directory.CreateDirectory(directory);
         void Capture(string path)
         {
@@ -542,6 +568,21 @@ public sealed class MainWindow : Window
                 if (_navigation.Bounds.Right > _update.Bounds.Left)
                     throw new InvalidOperationException("Navigation overlaps the update button at minimum window size: " + code);
                 Capture(Path.Combine(directory, stem + "-compact-" + code + ".png"));
+                // Display-only launcher states: no download, file replacement or restart.
+                foreach (var state in new[] { "Updates", "Update", "Restart" })
+                {
+                    _availableUpdate = state == "Updates" ? null : (new SignedUpdate(), new UpdateRelease { Version = "99.0.0" });
+                    _preparedUpdate = state == "Restart" ? "display-only" : null;
+                    RenderUpdateButton(); await Task.Delay(100);
+                    var labels = ((StackPanel)_update.Content!).Children.OfType<TextBlock>().ToList();
+                    if (labels[0].Text != "v" + UpdateService.DisplayVersion || labels[1].Text != Get(state)
+                        || _update.Classes.Contains("primary") != (state != "Updates"))
+                        throw new InvalidOperationException("Launcher version/update state is incorrect: " + code + "/" + state);
+                    if (_navigation.Bounds.Right > _update.Bounds.Left)
+                        throw new InvalidOperationException("Navigation overlaps the launcher version button: " + code + "/" + state);
+                    if (state == "Update") Capture(Path.Combine(directory, stem + "-launcher-update-" + code + ".png"));
+                }
+                _availableUpdate = null; _preparedUpdate = null; RenderUpdateButton();
                 // Inject a display-only proposal. Never check the network or invoke an installer in the smoke test.
                 _availableAddonUpdates = [new(_catalog.Packages[0], [], "1.0", false)];
                 _lastAddonCheck = new(_availableAddonUpdates, [], 1);
@@ -552,14 +593,14 @@ public sealed class MainWindow : Window
                 _availableAddonUpdates = []; Navigate("My addons"); await Task.Delay(50);
                 if (_updateAllAddons.IsVisible) throw new InvalidOperationException("Bulk update button must be hidden without confirmed updates.");
             }
-            File.WriteAllText(Path.Combine(directory, stem + "-smoke.txt"), $"OK — English/French/Italian UI, window icon, 5 pages including HD/non-HD patches, search, community addons, bulk addon update button visibility and translation, minimum size {MinWidth}×{MinHeight}, {_installed.Count} addons detected, {_catalog.Packages.Count} packs. No game files modified.");
+            File.WriteAllText(Path.Combine(directory, stem + "-smoke.txt"), $"OK — English/French/Italian UI, window icon, 5 pages including HD/non-HD patches, search, community addons, launcher version/update/restart states, bulk addon update button visibility and translation, minimum size {MinWidth}×{MinHeight}, {_installed.Count} addons detected, {_catalog.Packages.Count} packs. No game files modified.");
         }
         catch (Exception error)
         {
             Program.SmokeTestFailed = true;
             File.WriteAllText(Path.Combine(directory, stem + "-smoke-error.txt"), error.ToString());
         }
-        finally { _availableAddonUpdates = savedAddonUpdates; _lastAddonCheck = savedAddonCheck; _settings.Language = savedLanguage; SetLanguage(savedLanguage); Close(); }
+        finally { _availableUpdate = savedLauncherUpdate; _preparedUpdate = savedPreparedUpdate; _availableAddonUpdates = savedAddonUpdates; _lastAddonCheck = savedAddonCheck; _settings.Language = savedLanguage; SetLanguage(savedLanguage); Close(); }
     }
 
     private async Task CheckAddonUpdates()
@@ -636,41 +677,55 @@ public sealed class MainWindow : Window
 
     private async Task CheckUpdates(bool silent)
     {
-        if (_busy) return;
-        if (_preparedUpdate is not null)
+        if (_busy || _updateFlow) return;
+        _updateFlow = true;
+        try
         {
-            if (await Confirm("Update ready", Get("The launcher will restart to apply the update. Your addons and settings will not be modified."), "Restart and install"))
+            if (!UpdateService.IsConfigured)
+            {
+                if (!silent)
+                {
+                    Navigate("Settings");
+                    _status.Text = Get("Launcher updates are not available yet: the publisher's signing key must be embedded at build time.");
+                }
+                return;
+            }
+            if (_preparedUpdate is null && _availableUpdate is null)
+            {
+                var checkedSuccessfully = false;
+                await Run("Checking for updates", async () =>
+                {
+                    _availableUpdate = await _updater.CheckAsync(UpdateService.ResolveFeedUrl(_settings.UpdateFeedUrl), _operation!.Token);
+                    checkedSuccessfully = true;
+                }, cancellable: true);
+                RenderUpdateButton();
+                if (_availableUpdate is null)
+                {
+                    if (checkedSuccessfully) _status.Text = Format("The launcher is up to date (version {0}).", UpdateService.DisplayVersion);
+                    return;
+                }
+            }
+            // Startup only advertises the signed release. Never prompt, download or restart without a click.
+            if (silent) return;
+            var ready = _preparedUpdate is not null;
+            var message = ready ? Get("The launcher will restart to apply the update. Your addons and settings will not be modified.")
+                : _availableUpdate!.Value.Release.Notes + "\n\n" + Get("The launcher will download and verify the update, then restart automatically. Your addons and game settings will not be modified.");
+            if (!await Confirm(ready ? Get("Update ready") : Format("Version {0} available", _availableUpdate!.Value.Release.Version), message, ready ? "Restart and install" : "Update and restart")) return;
+            if (!ready)
+            {
+                await Run("Downloading launcher update", async () =>
+                {
+                    _preparedUpdate = await _updater.PrepareAsync(_availableUpdate!.Value.Envelope, new Progress<string>(text => _status.Text = text), _operation!.Token);
+                }, cancellable: true);
+                RenderUpdateButton();
+            }
+            if (_preparedUpdate is not null)
             {
                 try { _updater.LaunchReplacement(_preparedUpdate); Close(); }
                 catch (Exception error) { ReportError(error); }
             }
-            return;
         }
-        if (string.IsNullOrWhiteSpace(_settings.UpdateFeedUrl))
-        {
-            if (!silent) { Navigate("Settings"); _status.Text = Get("No update feed is configured. See the Built-in launcher updates section."); }
-            return;
-        }
-        (SignedUpdate Envelope, UpdateRelease Release)? available = null;
-        var checkedSuccessfully = false;
-        await Run(Get("Checking for updates"), async () =>
-        {
-            available = await _updater.CheckAsync(_settings.UpdateFeedUrl);
-            checkedSuccessfully = true;
-        });
-        if (available is null)
-        {
-            if (checkedSuccessfully) _status.Text = Format("The launcher is up to date (version {0}).", UpdateService.DisplayVersion);
-            return;
-        }
-        var update = available.Value;
-        if (!await Confirm(Format("Version {0} available", update.Release.Version), update.Release.Notes + Get("\n\nDownload this signed update? It will only be applied after you agree to restart."), "Download")) return;
-        await Run(Get("Downloading launcher update"), async () =>
-        {
-            _preparedUpdate = await _updater.PrepareAsync(update.Envelope, new Progress<string>(text => _status.Text = text), _operation!.Token);
-            _update.Content = Get("Restart");
-            ToolTip.SetTip(_update, Get("Restart to apply the launcher update"));
-        }, cancellable: true);
+        finally { _updateFlow = false; }
     }
 
     private async Task Run(string label, Func<Task> action, bool cancellable = false)

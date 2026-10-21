@@ -33,6 +33,31 @@ if (args.Length == 3 && args[0] == "keygen")
     return 0;
 }
 
+if (args.Length == 2 && args[0] == "verify-key")
+{
+    using var resource = typeof(UpdateService).Assembly.GetManifestResourceStream("ChromieLauncher.Core.Data.update-public-key.pem")!;
+    using var reader = new StreamReader(resource);
+    using var publisher = RSA.Create(); publisher.ImportFromPem(reader.ReadToEnd());
+    using var signer = RSA.Create(); signer.ImportFromPem(File.ReadAllText(args[1]));
+    var challenge = RandomNumberGenerator.GetBytes(32);
+    var signature = signer.SignData(challenge, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+    if (!publisher.VerifyData(challenge, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1))
+        throw new CryptographicException("The signing key does not match the embedded publisher public key.");
+    Console.WriteLine("Signing key matches the embedded publisher public key.");
+    return 0;
+}
+
+if (args.Length == 2 && args[0] == "verify")
+{
+    using var resource = typeof(UpdateService).Assembly.GetManifestResourceStream("ChromieLauncher.Core.Data.update-public-key.pem")!;
+    using var reader = new StreamReader(resource);
+    var envelope = JsonSerializer.Deserialize(File.ReadAllText(args[1]), AppJsonContext.Default.SignedUpdate)
+        ?? throw new InvalidDataException("Invalid update manifest.");
+    var release = UpdateService.VerifySigned(envelope, reader.ReadToEnd());
+    Console.WriteLine("Verified update manifest: " + release.Version);
+    return 0;
+}
+
 if (args.Length >= 6 && args[0] == "sign")
 {
     var zip = args[1]; var url = args[2]; var version = args[3]; var key = args[4]; var output = args[5];
@@ -56,5 +81,5 @@ if (args.Length >= 6 && args[0] == "sign")
     return 0;
 }
 
-Console.WriteLine("keygen <private.pem> <public.pem>\nsign <release.zip> <https-download-url> <version> <private.pem> <update.json> [notes]\nverify-patches (downloads and authenticates both variants in an isolated development cache; never installs in a game)");
+Console.WriteLine("keygen <private.pem> <public.pem>\nverify-key <private.pem>\nsign <release.zip> <https-download-url> <version> <private.pem> <update.json> [notes]\nverify <update.json>\nverify-patches (downloads and authenticates both variants in an isolated development cache; never installs in a game)");
 return 1;

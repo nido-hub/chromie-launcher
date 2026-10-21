@@ -33,6 +33,20 @@ jobs:
           [xml]$properties = Get-Content Directory.Build.props -Raw
           if ($properties.Project.PropertyGroup.Version -ne $version) { throw 'Tag and project version do not match' }
           "value=$version" >> $env:GITHUB_OUTPUT
+      - name: Validate update signing configuration
+        shell: pwsh
+        env:
+          UPDATE_SIGNING_PRIVATE_KEY: ${{ secrets.UPDATE_SIGNING_PRIVATE_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:UPDATE_SIGNING_PRIVATE_KEY)) { throw 'Configure the UPDATE_SIGNING_PRIVATE_KEY repository secret before publishing an auto-updating release.' }
+          $publicKey = Get-Content src/ChromieLauncher.Core/Data/update-public-key.pem -Raw
+          if ([string]::IsNullOrWhiteSpace($publicKey)) { throw 'Commit the publisher public key before building a release.' }
+          $key = Join-Path $env:RUNNER_TEMP ('chromie-signing-check-' + [guid]::NewGuid().ToString('N') + '.pem')
+          try {
+            [System.IO.File]::WriteAllText($key, $env:UPDATE_SIGNING_PRIVATE_KEY)
+            dotnet run --project tools/ChromieLauncher.Release -c Release -- verify-key $key
+            if ($LASTEXITCODE -ne 0) { throw 'The signing secret does not match the embedded public key.' }
+          } finally { if (Test-Path $key) { Remove-Item -LiteralPath $key -Force } }
       - name: Tests
         run: dotnet test tests/ChromieLauncher.Tests/ChromieLauncher.Tests.csproj -c Release
       - name: Compile Native AOT
@@ -57,10 +71,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ steps.version.outputs.value }}
           RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+          UPDATE_SIGNING_PRIVATE_KEY: ${{ secrets.UPDATE_SIGNING_PRIVATE_KEY }}
         run: |
           $zip = "artifacts/ChromieLauncher-$env:RELEASE_VERSION-win-x64.zip"
           $notes = "docs/releases/$env:RELEASE_TAG.md"
-          $arguments = @('release', 'create', $env:RELEASE_TAG, $zip, "$zip.sha256", '--verify-tag', '--title', "Chromie Launcher $env:RELEASE_VERSION", '--latest')
+          $key = Join-Path $env:RUNNER_TEMP ('chromie-signing-' + [guid]::NewGuid().ToString('N') + '.pem')
+          try {
+            [System.IO.File]::WriteAllText($key, $env:UPDATE_SIGNING_PRIVATE_KEY)
+            $url = "https://github.com/$env:RELEASE_REPOSITORY/releases/download/$env:RELEASE_TAG/ChromieLauncher-$env:RELEASE_VERSION-win-x64.zip"
+            $releaseNotes = if (Test-Path $notes) { Get-Content $notes -Raw } else { "Chromie Launcher $env:RELEASE_VERSION" }
+            dotnet run --project tools/ChromieLauncher.Release -c Release -- sign $zip $url $env:RELEASE_VERSION $key artifacts/update.json $releaseNotes
+            if ($LASTEXITCODE -ne 0) { throw 'Update manifest signing failed' }
+            dotnet run --project tools/ChromieLauncher.Release -c Release -- verify artifacts/update.json
+            if ($LASTEXITCODE -ne 0) { throw 'Update manifest verification failed' }
+          } finally { if (Test-Path $key) { Remove-Item -LiteralPath $key -Force } }
+          $arguments = @('release', 'create', $env:RELEASE_TAG, $zip, "$zip.sha256", 'artifacts/update.json', '--verify-tag', '--title', "Chromie Launcher $env:RELEASE_VERSION", '--latest')
           if (Test-Path $notes) { $arguments += @('--notes-file', $notes) } else { $arguments += '--generate-notes' }
           & gh @arguments
           if ($LASTEXITCODE -ne 0) { throw 'GitHub release publication failed' }

@@ -12,6 +12,9 @@ public sealed class UpdateService(Storage storage, HttpClient http)
 {
     public static Version CurrentVersion => typeof(UpdateService).Assembly.GetName().Version ?? new(0, 1, 0);
     public static string DisplayVersion => $"{CurrentVersion.Major}.{CurrentVersion.Minor}.{CurrentVersion.Build}";
+    public const string DefaultFeedUrl = "https://github.com/nido-hub/chromie-launcher/releases/latest/download/update.json";
+    public static bool IsConfigured => !string.IsNullOrWhiteSpace(ReadPublicKey());
+    public static string ResolveFeedUrl(string? configuredUrl) => string.IsNullOrWhiteSpace(configuredUrl) ? DefaultFeedUrl : configuredUrl.Trim();
     private const long MaximumPackageSize = 350L * 1024 * 1024;
 
     public async Task<(SignedUpdate Envelope, UpdateRelease Release)?> CheckAsync(string feedUrl, CancellationToken token = default)
@@ -191,12 +194,17 @@ public sealed class UpdateService(Storage storage, HttpClient http)
 
     private static string PublicKey()
     {
-        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("ChromieLauncher.Core.Data.update-public-key.pem")!;
-        using var reader = new StreamReader(stream);
-        var key = reader.ReadToEnd();
+        var key = ReadPublicKey();
         if (string.IsNullOrWhiteSpace(key))
             throw new InvalidOperationException("Launcher updates are not available yet: the publisher's signing key must be embedded at build time.");
         return key;
+    }
+
+    private static string ReadPublicKey()
+    {
+        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("ChromieLauncher.Core.Data.update-public-key.pem")!;
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 
     private static void ValidateTarget(string target)

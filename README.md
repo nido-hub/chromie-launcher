@@ -52,7 +52,7 @@ Il n’y a **aucune mise à jour silencieuse**. Le catalogue embarqué sert de b
 - Les fichiers restent téléchargés à une **révision exacte**, avec tailles et empreintes Git contrôlées. Les nouveaux TOC doivent déclarer une interface compatible ; les dispositions de fichiers non prises en charge et les dépendances requises inconnues sont refusées. Aucun code téléchargé n’est exécuté pendant la vérification.
 - La vérification ne modifie pas le jeu et ne nécessite pas de token GitHub. Hors ligne, en cas de quota GitHub ou d’erreur d’une source, le nombre d’erreurs est affiché et les détails sont disponibles au survol du bilan et dans les journaux. Une source inaccessible n’est pas déclarée à jour. La vérification est annulable et limitée à 90 secondes ; **Actualiser** permet de réessayer. Les résultats en ligne restent en mémoire pour la session.
 
-Le bouton **Mises à jour** dans la barre supérieure concerne toujours **le logiciel launcher**, pas les addons ; son flux signé n’est pas encore configuré pour la distribution.
+Le bouton portant le **numéro de version** dans la barre supérieure concerne toujours **le logiciel launcher**, pas les addons. Il signale les mises à jour disponibles ; la distribution automatique nécessite la configuration de signature décrite ci-dessous.
 
 Les fichiers sont téléchargés à la révision exacte, avec vérification de leur taille et de leur empreinte Git. Aucun code d’addon n’est exécuté par le launcher. Pas de redistribution massive des sources ; les droits des auteurs restent applicables.
 
@@ -121,11 +121,15 @@ Avalonia reste une interface native desktop, sans WebView. La publication compor
 
 ## Mises à jour intégrées
 
-L’utilisateur ne lance ni n’installe aucun updater séparé : vérification dans l’application, téléchargement, puis bouton **Redémarrer pour mettre à jour**. Le même exécutable se copie temporairement et se lance avec `--apply-update` pour effectuer le remplacement après la fermeture du processus principal. Cette phase est interne et ne présente pas une seconde interface.
+L’utilisateur ne lance ni n’installe aucun updater séparé. Au démarrage, une vérification signale une nouvelle version sur le **numéro de version en haut à droite**, sans ouvrir de confirmation ni télécharger de fichiers. Un clic puis une seule confirmation **Mettre à jour et redémarrer** suffisent : téléchargement, vérification, fermeture du launcher, remplacement et redémarrage automatiques. Une annulation ou un échec de téléchargement ne ferme pas l’application et permet de réessayer. Si le démarrage de la phase de remplacement échoue, le bouton **Redémarrer** permet de réessayer sans retélécharger.
+
+Le flux GitHub officiel est utilisé par défaut, y compris pour les anciens paramètres dont l’URL est vide : `https://github.com/nido-hub/chromie-launcher/releases/latest/download/update.json`. L’utilisateur n’a pas à renseigner d’URL. Un autre flux signé peut être choisi dans **Paramètres avancés des mises à jour**. Une compilation sans clé publique affiche explicitement que la distribution n’est pas encore configurée et ne fait pas de vérification réseau au démarrage.
+
+Le même exécutable se copie temporairement et se lance avec `--apply-update` pour effectuer le remplacement après la fermeture du processus principal. Cette phase est interne et ne présente pas une seconde interface. Les addons et les paramètres du jeu ne sont pas modifiés.
 
 Le flux contient un manifeste **signé RSA / SHA-256**, avec version, URL HTTPS et empreinte SHA-256 du ZIP. La clé publique est intégrée à la compilation. Un manifeste non signé, une empreinte incorrecte ou une ancienne version sont refusés. Extraction avec contrôle des chemins, sauvegarde des fichiers remplacés et retour arrière sur erreur de remplacement. Les sauvegardes du logiciel restent dans `%LOCALAPPDATA%\ChromieLauncher\updates`. Un échec est détaillé dans `update-error.log`. Une coupure de courant pendant le remplacement peut nécessiter une restauration manuelle ; ce premier updater n’est pas un installateur transactionnel système.
 
-**La première version ne contient volontairement ni clé d’éditeur factice ni fausse URL de production.** Pour rendre l’auto-update réellement distribuable :
+**La clé publique d’éditeur est intégrée au dépôt ; la clé privée ne doit jamais y être ajoutée.** Le flux officiel et le workflow de signature sont configurés pour GitHub Releases. Les anciennes releases sans clé restent concernées par l’amorçage décrit plus bas. Pour reproduire la configuration sur un autre dépôt (ne pas régénérer la clé du projet existant) :
 
 1. Créer et conserver une clé privée **hors du dépôt** :
 
@@ -142,10 +146,21 @@ Le flux contient un manifeste **signé RSA / SHA-256**, avec version, URL HTTPS 
    dotnet run --project tools/ChromieLauncher.Release -- sign ChromieLauncher-0.4.0-win-x64.zip https://example.org/ChromieLauncher-0.4.0-win-x64.zip 0.4.0 C:\MesCles\chromie.private.pem update.json "Notes de version"
    ```
 
-4. Héberger le ZIP et `update.json` sur HTTPS (par exemple GitHub Releases), puis renseigner l’URL de `update.json` dans les paramètres. Utiliser une URL stable pour le manifeste (`releases/latest/download/update.json` sur GitHub).
-5. Tester le parcours complet avec deux versions signées dans un dossier de test, avant une distribution publique. Aucun déploiement externe n’est effectué par ce projet.
+4. Pour les releases GitHub, enregistrer le contenu de la clé privée dans le secret de dépôt **`UPDATE_SIGNING_PRIVATE_KEY`** (Settings → Secrets and variables → Actions). Le workflow de release vérifie que ce secret correspond à la clé publique embarquée, compile, signe le manifeste et publie **`update.json` avec le ZIP**. Il refuse de publier si la signature n’est pas configurée. La clé privée temporaire reste hors des artefacts et est supprimée après la signature. Ne pas changer de clé entre deux versions sans prévoir une migration de confiance.
+5. Tester le parcours complet avec deux versions signées dans un dossier de test, avant une distribution publique. Pour un hébergement différent, publier le ZIP et `update.json` sur HTTPS et renseigner l’URL stable du manifeste dans les paramètres avancés. Le flux par défaut concerne `nido-hub/chromie-launcher` ; l’adapter pour un fork.
+
+**Amorçage :** les anciennes releases sans clé publique embarquée ne peuvent pas recevoir une mise à jour signée. Le passage à la première version configurée nécessite donc un dernier téléchargement manuel ; les suivantes pourront utiliser le bouton intégré. Les changements du dépôt ne configurent pas de secret GitHub et ne publient pas de release à eux seuls.
 
 La signature du manifeste est distincte d’Authenticode. Un certificat Windows sera nécessaire pour une distribution signée du binaire et pour réduire les avertissements SmartScreen.
+
+Contrôles de publication, sans afficher la clé privée ni modifier le jeu :
+
+```powershell
+dotnet run --project tools/ChromieLauncher.Release -- verify-key C:\MesCles\chromie.private.pem
+dotnet run --project tools/ChromieLauncher.Release -- verify artifacts/update.json
+```
+
+Conserver une sauvegarde sécurisée de la clé privée hors du dépôt : GitHub ne permet pas de relire la valeur d’un secret. Perdre cette clé empêcherait de signer les prochaines mises à jour avec l’identité déjà approuvée par les launchers installés.
 
 ## Développement et tests
 

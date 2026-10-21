@@ -24,6 +24,19 @@ public sealed class LanguageTests : IDisposable
     }
 
     [Theory]
+    [InlineData("fr")]
+    [InlineData("it")]
+    public void OneClickLauncherUpdateControlsAreTranslated(string language)
+    {
+        foreach (var text in new[]
+        {
+            "Check for launcher updates", "Update and restart", "Advanced update settings",
+            "Click the version number to update and restart the launcher. Your addons and game settings are preserved.",
+            "The launcher will download and verify the update, then restart automatically. Your addons and game settings will not be modified."
+        }) Assert.NotEqual(text, LauncherText.Get(text, language));
+    }
+
+    [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("de")]
