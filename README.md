@@ -6,7 +6,7 @@ Application desktop Windows pour ChromieCraft / WoW **3.3.5a**, disponible en **
 
 Ouvrir **`dist\win-x64\ChromieLauncher.exe`**, ou double-cliquer sur **`Lancer ChromieLauncher.cmd`**. Le dossier du jeu est recherché dans les dossiers parents ; sinon le sélectionner dans **Settings**. Le launcher doit rester dans son propre dossier, pas directement à côté de `Wow.exe`.
 
-La release `0.4.1` est **compilée en Native AOT pour Windows x64**. Elle peut être lancée sans installer .NET. Télécharger le ZIP depuis les [releases GitHub](https://github.com/nido-hub/chromie-launcher/releases/latest) et conserver les DLL natives du dossier à côté de l’exécutable. Pour une compilation locale, utiliser les scripts ci-dessous.
+La release `0.4.2` est **compilée en Native AOT pour Windows x64**. Elle peut être lancée sans installer .NET. Télécharger le ZIP depuis les [releases GitHub](https://github.com/nido-hub/chromie-launcher/releases/latest) et conserver les DLL natives du dossier à côté de l’exécutable. Pour une compilation locale, utiliser les scripts ci-dessous.
 
 - **My addons** : détection des dossiers et métadonnées TOC, versions inconnues conservées comme telles, modules Blizzard masqués. Vérification en ligne au démarrage, mise à jour individuelle ou **Tout mettre à jour** après confirmation. Ouvrir ou retirer un addon.
 - **Library** : recherche, catégories, packs multi-dossiers, dépendances obligatoires, installation avec confirmation et dépôt d’origine visible.
@@ -18,6 +18,8 @@ La release `0.4.1` est **compilée en Native AOT pour Windows x64**. Elle peut �
 ## Identité visuelle
 
 L’interface reprend les codes du [site ChromieCraft](https://chromiecraft.com/en/) : fond illustré sombre, logo et emblème, navigation horizontale, titres en **Marcellus SC**, texte en **Roboto Condensed**, touches dorées et bleu glacier, boutons encadrés. Le contraste des panneaux reste adapté à la gestion des addons.
+
+Le bandeau de page reste compact : le logo et **Jouer à ChromieCraft** sont côte à côte. Les statistiques des addons tiennent sur une ligne et les **Sources du catalogue** se déplient à la demande, pour laisser plus de hauteur aux listes d’addons installés ou à télécharger.
 
 Les images et les polices sont embarquées : **aucun accès au site ni téléchargement de ressources graphiques n’est nécessaire à l’exécution**. Les deux polices sont fournies avec leur licence SIL OFL. Les visuels et marques appartiennent à leurs ayants droit ; leur réutilisation publique nécessite de vérifier les autorisations. Les sources et mentions sont dans `src/ChromieLauncher.Desktop/Assets/NOTICE.md`. Le launcher conserve sa mention de projet indépendant, non affilié.
 

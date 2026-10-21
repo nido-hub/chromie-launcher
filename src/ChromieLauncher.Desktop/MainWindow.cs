@@ -27,9 +27,10 @@ public sealed class MainWindow : Window
     private List<AddonUpdate> _availableAddonUpdates = [];
     private AddonUpdateCheck? _lastAddonCheck;
     private PatchStatus _patchStatus = new(false, null);
-    private readonly Grid _root = new() { RowDefinitions = new("76,*"), Background = LauncherTheme.Background, ClipToBounds = true };
+    private readonly Grid _root = new() { RowDefinitions = new("64,*"), Background = LauncherTheme.Background, ClipToBounds = true };
     private readonly StackPanel _navigation = new() { Orientation = Orientation.Horizontal, Spacing = 2 };
     private readonly DockPanel _body = new() { LastChildFill = true };
+    private readonly Border _banner = new();
     private readonly StackPanel _list = new() { Spacing = 10 };
     private readonly TextBlock _heading = Heading(Get("My addons"), 34);
     private readonly TextBlock _subtitle = Text("", 15, color: Muted);
@@ -54,7 +55,6 @@ public sealed class MainWindow : Window
     private (SignedUpdate Envelope, UpdateRelease Release)? _availableUpdate;
     private bool _updateFlow;
     private Grid? _stats;
-    private TextBlock? _eyebrow;
     private TextBlock? _footer;
     private static readonly string[] LanguageCodes = ["en", "fr", "it"];
 
@@ -132,33 +132,25 @@ public sealed class MainWindow : Window
         Grid.SetColumn(_update, 2); navbar.Children.Add(_update);
         _root.Children.Add(new Border { Background = Brush.Parse("#F20E0E0E"), BorderBrush = Brush.Parse("#685E4C"), BorderThickness = new(0, 0, 0, 1), Child = navbar });
 
-        var content = new Grid { RowDefinitions = new("Auto,*,Auto"), Margin = new(38, 24, 38, 18) };
+        var content = new Grid { RowDefinitions = new("Auto,*,Auto"), Margin = new(38, 14, 38, 18) };
         Grid.SetRow(content, 1); _root.Children.Add(content);
-        var header = new Grid { ColumnDefinitions = new("*,260"), MinHeight = 150, Margin = new(26, 16) };
-        var titles = new StackPanel { Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
-        var eyebrow = Text(Get("YOUR COMPANION IN AZEROTH"), 11, color: LauncherTheme.Gold);
-        _eyebrow = eyebrow;
-        titles.Children.Add(eyebrow);
+        var header = new Grid { ColumnDefinitions = new("*,Auto"), ColumnSpacing = 24, MinHeight = 68, Margin = new(20, 10) };
+        var titles = new StackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
         titles.Children.Add(_heading); _subtitle.TextWrapping = TextWrapping.Wrap; titles.Children.Add(_subtitle); header.Children.Add(titles);
-        var headerActions = new StackPanel { Spacing = 9, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
-        var wordmark = LauncherTheme.Image("chromiecraft-wordmark.png", 230, 72);
+        var headerActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 18, VerticalAlignment = VerticalAlignment.Center };
+        var wordmark = LauncherTheme.Image("chromiecraft-wordmark.png", 150, 46);
         headerActions.Children.Add(wordmark);
-        _play.HorizontalAlignment = HorizontalAlignment.Stretch; headerActions.Children.Add(_play);
+        _play.VerticalAlignment = VerticalAlignment.Center; headerActions.Children.Add(_play);
         Grid.SetColumn(headerActions, 1); header.Children.Add(headerActions);
-        content.Children.Add(new Border
-        {
-            Background = LauncherTheme.Shade((0, "#450E0E0E"), (1, "#D90E0E0E")),
-            BorderBrush = Brush.Parse("#8A756044"), BorderThickness = new(1), CornerRadius = new(2),
-            Margin = new(0, 0, 0, 20), Child = header
-        });
+        _banner.Background = LauncherTheme.Shade((0, "#450E0E0E"), (1, "#D90E0E0E"));
+        _banner.BorderBrush = Brush.Parse("#8A756044"); _banner.BorderThickness = new(1); _banner.CornerRadius = new(2);
+        _banner.Margin = new(0, 0, 0, 14); _banner.Child = header;
+        content.Children.Add(_banner);
         void UpdateDensity()
         {
             var compact = Bounds.Height > 0 ? Bounds.Height < 820 : Height < 820;
-            header.MinHeight = compact ? 110 : 150;
-            header.Margin = new(26, compact ? 10 : 16);
-            wordmark.Height = compact ? 46 : 72;
-            eyebrow.IsVisible = !compact;
-            _heading.FontSize = compact ? 30 : 34;
+            header.MinHeight = compact ? 60 : 68;
+            _heading.FontSize = compact ? 26 : 30;
             if (_stats is not null) _stats.IsVisible = !compact;
         }
         SizeChanged += (_, _) => UpdateDensity();
@@ -185,7 +177,6 @@ public sealed class MainWindow : Window
         RenderUpdateButton();
         _cancel.Content = Get("Cancel");
         _search.Watermark = Get("Search addons…");
-        _eyebrow!.Text = Get("YOUR COMPANION IN AZEROTH");
         _footer!.Text = Get("Independent project, not affiliated with ChromieCraft");
         _status.Text = Get("Ready");
     }
@@ -305,14 +296,17 @@ public sealed class MainWindow : Window
         var items = new[] { (_installed.Count.ToString(), "local addon folders detected"), (_catalog.Packages.Count.ToString(), "packs in the library"), ("Protected", "WTF settings preserved") };
         for (var i = 0; i < items.Length; i++)
         {
-            var stack = new StackPanel { Spacing = 4 };
-            stack.Children.Add(Heading(Get(items[i].Item1), 26, i == 2 ? LauncherTheme.Ice : LauncherTheme.Gold));
-            stack.Children.Add(Text(Get(items[i].Item2), 12, color: Muted));
-            var card = Card(stack); Grid.SetColumn(card, i); stats.Children.Add(card);
+            var summary = Text(Get(items[i].Item1) + " · " + Get(items[i].Item2), 13, color: i == 2 ? LauncherTheme.Ice : Muted);
+            Grid.SetColumn(summary, i); stats.Children.Add(summary);
         }
         _body.Children.Add(stats);
         if (_page == "Library")
-            _body.Children.Add(Notice("CATALOG SOURCES", "Historical addons come from the WoWGaming archive linked by ChromieCraft. Chromie Wishlist and LootRolls come directly from their GitHub repositories. Compatibility is declared, not guaranteed in game. Existing addons are never replaced automatically."));
+            _body.Children.Add(new Expander
+            {
+                Header = Heading(Get("CATALOG SOURCES"), 11, LauncherTheme.Gold),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Content = Notice("CATALOG SOURCES", "Historical addons come from the WoWGaming archive linked by ChromieCraft. Chromie Wishlist and LootRolls come directly from their GitHub repositories. Compatibility is declared, not guaranteed in game. Existing addons are never replaced automatically.")
+            });
         var toolbar = new Grid { ColumnDefinitions = new("*,Auto,Auto"), ColumnSpacing = 10 };
         _search.HorizontalAlignment = HorizontalAlignment.Stretch; toolbar.Children.Add(_search);
         _category.IsVisible = _page == "Library";
@@ -337,7 +331,7 @@ public sealed class MainWindow : Window
         // Use a bounded Grid for the list: a StackPanel alone would measure it with infinite height.
         var wrapper = new Grid { RowDefinitions = new("Auto,*") };
         var upper = _body.Children.ToList(); _body.Children.Clear();
-        var top = new StackPanel { Spacing = 16 };
+        var top = new StackPanel { Spacing = 10 };
         foreach (var child in upper) top.Children.Add(child);
         wrapper.Children.Add(top); Grid.SetRow(scroll, 1); scroll.Margin = new(0, 14, 0, 0); wrapper.Children.Add(scroll);
         _body.Children.Add(wrapper);
@@ -518,6 +512,20 @@ public sealed class MainWindow : Window
             using var bitmap = new RenderTargetBitmap(new PixelSize((int)Bounds.Width, (int)Bounds.Height), new Vector(96, 96));
             bitmap.Render(_root); bitmap.Save(path);
         }
+        void ValidateAddonLayout()
+        {
+            var wrapper = (Grid)_body.Children.Single();
+            var scroll = wrapper.Children.OfType<ScrollViewer>().Single();
+            if (_banner.Bounds.Height > 105)
+                throw new InvalidOperationException("The page banner takes too much vertical space: " + _banner.Bounds.Height);
+            if (scroll.Bounds.Height < 200)
+                throw new InvalidOperationException("Too little space remains for browsing addons: " + scroll.Bounds.Height);
+            var playPosition = _play.TranslatePoint(new Point(), _banner);
+            if (playPosition is not { } position || position.X < 0 || position.Y < 0
+                || position.X + _play.Bounds.Width > _banner.Bounds.Width
+                || position.Y + _play.Bounds.Height > _banner.Bounds.Height)
+                throw new InvalidOperationException("The Play button is outside the compact banner.");
+        }
         try
         {
             if (Icon is null) throw new InvalidOperationException("The window icon is missing.");
@@ -556,6 +564,23 @@ public sealed class MainWindow : Window
                 Capture(Path.Combine(directory, stem + (addon == "LootRolls" ? "-lootrolls.png" : "-wishlist.png")));
             }
             _search.Text = ""; await Task.Delay(100);
+            foreach (var code in LanguageCodes)
+            {
+                _settings.Language = code; SetLanguage(code); ApplyLanguage();
+                foreach (var page in new[] { "My addons", "Library" })
+                {
+                    Navigate(page); await Task.Delay(200); ValidateAddonLayout();
+                    Capture(Path.Combine(directory, stem + "-banner-" + (page == "Library" ? "library-" : "installed-") + code + ".png"));
+                    if (page == "Library")
+                    {
+                        var wrapper = (Grid)_body.Children.Single();
+                        var sources = wrapper.Children.OfType<StackPanel>().Single().Children.OfType<Expander>().Single();
+                        if (sources.IsExpanded) throw new InvalidOperationException("Catalog sources must start collapsed.");
+                        sources.IsExpanded = true; await Task.Delay(300); ValidateAddonLayout();
+                        sources.IsExpanded = false; await Task.Delay(300); ValidateAddonLayout();
+                    }
+                }
+            }
             Width = MinWidth; Height = MinHeight;
             foreach (var code in LanguageCodes)
             {
@@ -565,6 +590,7 @@ public sealed class MainWindow : Window
                     throw new InvalidOperationException("Language switching failed: " + code);
                 Capture(Path.Combine(directory, stem + "-settings-" + code + ".png"));
                 Navigate("Library"); await Task.Delay(200);
+                ValidateAddonLayout();
                 if (_navigation.Bounds.Right > _update.Bounds.Left)
                     throw new InvalidOperationException("Navigation overlaps the update button at minimum window size: " + code);
                 Capture(Path.Combine(directory, stem + "-compact-" + code + ".png"));
@@ -587,13 +613,14 @@ public sealed class MainWindow : Window
                 _availableAddonUpdates = [new(_catalog.Packages[0], [], "1.0", false)];
                 _lastAddonCheck = new(_availableAddonUpdates, [], 1);
                 Navigate("My addons"); await Task.Delay(150);
+                ValidateAddonLayout();
                 if (!_updateAllAddons.IsVisible || _updateAllAddons.Content as string != Format("Update all addons ({0})", 1))
                     throw new InvalidOperationException("Bulk addon update button is missing or not translated: " + code);
                 Capture(Path.Combine(directory, stem + "-addon-updates-" + code + ".png"));
                 _availableAddonUpdates = []; Navigate("My addons"); await Task.Delay(50);
                 if (_updateAllAddons.IsVisible) throw new InvalidOperationException("Bulk update button must be hidden without confirmed updates.");
             }
-            File.WriteAllText(Path.Combine(directory, stem + "-smoke.txt"), $"OK — English/French/Italian UI, window icon, 5 pages including HD/non-HD patches, search, community addons, launcher version/update/restart states, bulk addon update button visibility and translation, minimum size {MinWidth}×{MinHeight}, {_installed.Count} addons detected, {_catalog.Packages.Count} packs. No game files modified.");
+            File.WriteAllText(Path.Combine(directory, stem + "-smoke.txt"), $"OK — English/French/Italian UI, window icon, 5 pages including HD/non-HD patches, search, community addons, compact banner and visible Play button, addon browsing space, collapsible catalog sources, launcher version/update/restart states, bulk addon update button visibility and translation, minimum size {MinWidth}×{MinHeight}, {_installed.Count} addons detected, {_catalog.Packages.Count} packs. No game files modified.");
         }
         catch (Exception error)
         {

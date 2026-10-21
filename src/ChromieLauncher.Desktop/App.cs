@@ -52,7 +52,7 @@ public sealed class App : Application
                 new Setter(Button.BorderBrushProperty, Brushes.Transparent),
                 new Setter(Button.BorderThicknessProperty, new Thickness(0, 0, 0, 2)),
                 new Setter(Button.CornerRadiusProperty, new CornerRadius(0)),
-                new Setter(Button.PaddingProperty, new Thickness(15, 23)),
+                new Setter(Button.PaddingProperty, new Thickness(15, 17)),
                 new Setter(Button.FontSizeProperty, 14d)
             }
         });
