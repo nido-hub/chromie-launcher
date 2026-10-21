@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="Data/catalog.json" />
+    <EmbeddedResource Include="../../tools/community-addons.json" LogicalName="ChromieLauncher.Core.Data.community-addons.json" />
     <EmbeddedResource Include="Data/update-public-key.pem" />
   </ItemGroup>
 </Project>

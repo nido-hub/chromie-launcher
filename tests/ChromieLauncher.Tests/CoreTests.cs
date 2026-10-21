@@ -103,6 +103,64 @@ public sealed class CoreTests : IDisposable
     }
 
     [Fact]
+    public async Task BulkUpdateReplacesSelectedDependenciesTogetherAndPreservesManualUnselectedDependency()
+    {
+        var lib = Package("Lib"); var addon = Package("Example", "Lib"); Package("Manual");
+        addon.Dependencies.Add("Manual");
+        WriteAddon("Lib", "old lib"); WriteAddon("Example", "old example"); WriteAddon("Manual", "manual newer");
+        var wtf = Path.Combine(Game, "WTF", "settings.lua"); Directory.CreateDirectory(Path.GetDirectoryName(wtf)!); File.WriteAllText(wtf, "keep");
+        await _service.InstallManyAsync(Game, [addon, lib]);
+        Assert.Equal(2, _service.GetState(Game).Packages.Count);
+        Assert.Equal("manual newer", File.ReadAllText(Toc("Manual"))); Assert.Equal("keep", File.ReadAllText(wtf));
+        Assert.Single(Directory.GetDirectories(AddonService.BackupDirectory(Game)));
+        var backups = Directory.GetFiles(AddonService.BackupDirectory(Game), "*.toc", SearchOption.AllDirectories);
+        Assert.Equal(2, backups.Length);
+        Assert.Contains(backups, p => File.ReadAllText(p) == "old lib"); Assert.Contains(backups, p => File.ReadAllText(p) == "old example");
+    }
+
+    [Fact]
+    public async Task BulkUpdateCorruptDownloadLeavesAllSelectedAddonsUntouched()
+    {
+        var first = Package("First"); var second = Package("Second");
+        WriteAddon("First", "original first"); WriteAddon("Second", "original second");
+        _blobs["Second/Second.toc"] = Encoding.UTF8.GetBytes("corrupt");
+        await Assert.ThrowsAsync<InvalidDataException>(() => _service.InstallManyAsync(Game, [first, second]));
+        Assert.Equal("original first", File.ReadAllText(Toc("First"))); Assert.Equal("original second", File.ReadAllText(Toc("Second")));
+        Assert.Empty(_service.GetState(Game).Packages);
+    }
+
+    [Fact]
+    public async Task BulkUpdateCancellationLeavesAllSelectedAddonsUntouched()
+    {
+        var first = Package("First"); var second = Package("Second");
+        WriteAddon("First", "original first"); WriteAddon("Second", "original second");
+        using var cancel = new CancellationTokenSource(); cancel.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _service.InstallManyAsync(Game, [first, second], token: cancel.Token));
+        Assert.Equal("original first", File.ReadAllText(Toc("First"))); Assert.Equal("original second", File.ReadAllText(Toc("Second")));
+        Assert.Empty(_service.GetState(Game).Packages);
+    }
+
+    [Fact]
+    public async Task BulkUpdateCommitFailureRollsBackAlreadyReplacedAddonAndManagedState()
+    {
+        var first = Package("First"); var second = Package("Second");
+        await _service.InstallManyAsync(Game, [first, second]);
+        WriteAddon("First", "original first"); WriteAddon("Second", "original second");
+        var stateBefore = File.ReadAllText(Path.Combine(_storage.Profile(Game), "managed.json"));
+        var checks = 0;
+        var service = new AddonService(_storage, _http, _catalog, () =>
+        {
+            if (++checks != 2) return;
+            var work = Directory.GetDirectories(AddonService.BackupDirectory(Game)).Single(p => !File.Exists(Path.Combine(p, "committed")));
+            Directory.CreateDirectory(Path.Combine(work, "backup"));
+            File.WriteAllText(Path.Combine(work, "backup", "Second"), "force second replacement to fail");
+        });
+        await Assert.ThrowsAsync<IOException>(() => service.InstallManyAsync(Game, [first, second]));
+        Assert.Equal("original first", File.ReadAllText(Toc("First"))); Assert.Equal("original second", File.ReadAllText(Toc("Second")));
+        Assert.Equal(stateBefore, File.ReadAllText(Path.Combine(_storage.Profile(Game), "managed.json")));
+    }
+
+    [Fact]
     public async Task ReplacementKeepsOriginalBackup()
     {
         var package = Package("Example");

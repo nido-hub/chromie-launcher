@@ -23,6 +23,9 @@ public sealed class MainWindow : Window
     private readonly AddonService _addons;
     private readonly UpdateService _updater;
     private readonly ClientPatchService _patches;
+    private readonly AddonUpdateService _addonUpdates;
+    private List<AddonUpdate> _availableAddonUpdates = [];
+    private AddonUpdateCheck? _lastAddonCheck;
     private PatchStatus _patchStatus = new(false, null);
     private readonly Grid _root = new() { RowDefinitions = new("76,*"), Background = LauncherTheme.Background, ClipToBounds = true };
     private readonly StackPanel _navigation = new() { Orientation = Orientation.Horizontal, Spacing = 2 };
@@ -36,6 +39,7 @@ public sealed class MainWindow : Window
     private readonly ComboBox _category = new() { MinWidth = 180, CornerRadius = new(2) };
     private readonly Button _play = Button("Play ChromieCraft", "primary");
     private readonly Button _refresh = Button("Refresh");
+    private readonly Button _updateAllAddons = Button("Update all addons", "primary");
     private readonly Button _update = Button("Updates");
     private readonly Button _cancel = Button("Cancel");
     private readonly ProgressBar _progress = new() { IsIndeterminate = true, Height = 3, IsVisible = false };
@@ -69,12 +73,14 @@ public sealed class MainWindow : Window
         _addons = new(_storage, _http, _catalog);
         _updater = new(_storage, _http);
         _patches = new(_storage, new MegaClient(_http));
+        _addonUpdates = new(_http);
         BuildLayout();
         ApplyLanguage();
         Content = _root;
         _search.TextChanged += (_, _) => RenderList();
         _category.SelectionChanged += (_, _) => RenderList();
-        _refresh.Click += async (_, _) => await Run(Get("Scanning addons"), ReloadAsync);
+        _refresh.Click += async (_, _) => await CheckAddonUpdates();
+        _updateAllAddons.Click += async (_, _) => await UpdateAllAddons();
         _play.Click += (_, _) => LaunchGame();
         _update.Click += async (_, _) => await CheckUpdates(false);
         _cancel.Click += (_, _) => _operation?.Cancel();
@@ -84,6 +90,7 @@ public sealed class MainWindow : Window
         {
             if (!string.IsNullOrEmpty(_settings.GamePath)) await Run(Get("Scanning addons"), ReloadAsync);
             else Navigate("Settings");
+            if (Program.SmokeTestOutput is null && !string.IsNullOrEmpty(_settings.GamePath)) await CheckAddonUpdates();
             if (_settings.CheckUpdatesAtStartup && !string.IsNullOrEmpty(_settings.UpdateFeedUrl)) await CheckUpdates(true);
             if (Program.SmokeTestOutput is not null)
                 DispatcherTimer.RunOnce(() => _ = SmokeTestAsync(), TimeSpan.FromSeconds(2));
@@ -169,6 +176,7 @@ public sealed class MainWindow : Window
         foreach (var button in _navButtons) button.Content = Get((string)button.Tag!);
         _play.Content = Get("Play ChromieCraft");
         _refresh.Content = Get("Refresh");
+        ToolTip.SetTip(_refresh, Get("Scan installed addons and check their sources online"));
         _update.Content = Get(_preparedUpdate is null ? "Updates" : "Restart");
         if (_preparedUpdate is not null) ToolTip.SetTip(_update, Get("Restart to apply the launcher update"));
         _cancel.Content = Get("Cancel");
@@ -195,6 +203,7 @@ public sealed class MainWindow : Window
         // Controls are reused between pages; detach them before constructing the next page.
         if (_search.Parent is Panel oldToolbar) oldToolbar.Children.Clear();
         if (_refresh.Parent is Panel oldRefreshParent) oldRefreshParent.Children.Clear();
+        if (_updateAllAddons.Parent is Panel oldUpdateParent) oldUpdateParent.Children.Clear();
         if (_list.Parent is ScrollViewer oldScroll) oldScroll.Content = null;
         if (page == "Settings") { RenderSettings(); return; }
         if (page == "Downloads") { RenderDownloads(); return; }
@@ -292,6 +301,17 @@ public sealed class MainWindow : Window
         _category.SelectedIndex = 0;
         Grid.SetColumn(_category, 1); toolbar.Children.Add(_category);
         Grid.SetColumn(_refresh, 2); toolbar.Children.Add(_refresh); _body.Children.Add(toolbar);
+        var updateActions = new WrapPanel { Orientation = Orientation.Horizontal };
+        _updateAllAddons.Content = Format("Update all addons ({0})", _availableAddonUpdates.Count);
+        _updateAllAddons.IsVisible = _availableAddonUpdates.Count > 0;
+        _updateAllAddons.Margin = new(0, 0, 14, 0);
+        updateActions.Children.Add(_updateAllAddons);
+        var updateSummary = Text(_lastAddonCheck is null ? Get("Addon updates have not been checked online.")
+            : Format("{0} update(s) available · {1} pack(s) checked · {2} error(s)", _availableAddonUpdates.Count, _lastAddonCheck.CheckedPackages, _lastAddonCheck.Errors.Count), 13, color: Muted);
+        updateSummary.VerticalAlignment = VerticalAlignment.Center; updateSummary.TextWrapping = TextWrapping.Wrap;
+        ToolTip.SetTip(updateSummary, Get("Only known catalog sources are checked. Manual addons with unknown versions are not updated automatically.")
+            + (_lastAddonCheck?.Errors.Count > 0 ? "\n" + string.Join("\n", _lastAddonCheck.Errors) : ""));
+        updateActions.Children.Add(updateSummary); _body.Children.Add(updateActions);
         if (_count.Parent is Panel countParent) countParent.Children.Remove(_count);
         _body.Children.Add(_count);
         var scroll = new ScrollViewer { Content = _list, VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto };
@@ -338,6 +358,12 @@ public sealed class MainWindow : Window
         text.Children.Add(Text(Get(addon.Status), 12, color: addon.Managed ? LauncherTheme.Success : LauncherTheme.Gold));
         Grid.SetColumn(text, 1); row.Children.Add(text);
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        var available = _availableAddonUpdates.FirstOrDefault(u => u.Package.Folders.Contains(addon.Folder, StringComparer.OrdinalIgnoreCase));
+        if (available is not null)
+        {
+            text.Children.Add(Text(Format("Update available: {0}", available.Package.Version), 12, color: LauncherTheme.Gold));
+            var update = Button("Update", "primary"); update.Click += async (_, _) => await InstallAddon(available.Package); actions.Children.Add(update);
+        }
         var folder = Button("Open"); folder.Click += (_, _) => OpenFolder(SafePath.Child(AddonService.ValidateGame(_settings.GamePath), "Interface/AddOns/" + addon.Folder));
         var remove = Button("Remove"); remove.Click += async (_, _) => await RemoveAddon(addon);
         actions.Children.Add(folder); actions.Children.Add(remove); Grid.SetColumn(actions, 2); row.Children.Add(actions);
@@ -348,7 +374,7 @@ public sealed class MainWindow : Window
     {
         var existing = package.Folders.Any(f => _installed.Any(a => a.Folder.Equals(f, StringComparison.OrdinalIgnoreCase)));
         var managed = _managed.Packages.FirstOrDefault(p => p.Id == package.Id);
-        var current = managed is not null && managed.Commit == CatalogService.Revision(_catalog, package) && package.Folders.All(f => _installed.Any(a => a.Folder.Equals(f, StringComparison.OrdinalIgnoreCase)));
+        var current = managed is not null && !_availableAddonUpdates.Any(u => u.Package.Id == package.Id) && package.Folders.All(f => _installed.Any(a => a.Folder.Equals(f, StringComparison.OrdinalIgnoreCase)));
         var row = new Grid { ColumnDefinitions = new("48,*,Auto"), ColumnSpacing = 14 };
         row.Children.Add(Monogram(package.Name, existing));
         var text = new StackPanel { Spacing = 5 };
@@ -357,7 +383,7 @@ public sealed class MainWindow : Window
         text.Children.Add(Text(Format("{0}  ·  {1}  ·  {2} folder(s)", package.Category, package.Version, package.Folders.Count), 12, color: LauncherTheme.Gold));
         text.Children.Add(Text(Format("Source: {0}", package.Repository), 12, color: Muted));
         Grid.SetColumn(text, 1); row.Children.Add(text);
-        var action = Button(current ? "Installed" : managed is not null ? "Update" : existing ? "Replace…" : "Install", current ? null : "primary");
+        var action = Button(current ? "Installed" : _availableAddonUpdates.Any(u => u.Package.Id == package.Id) ? "Update" : existing ? "Replace…" : "Install", current ? null : "primary");
         action.IsEnabled = !current; action.MinWidth = 112; action.VerticalAlignment = VerticalAlignment.Center;
         action.Click += async (_, _) => await InstallAddon(package);
         Grid.SetColumn(action, 2); row.Children.Add(action);
@@ -390,20 +416,31 @@ public sealed class MainWindow : Window
         fields.Children.Add(Text(Get("Publisher's signed update manifest URL"), 12, color: Muted)); fields.Children.Add(feed);
         fields.Children.Add(Notice("DEVELOPMENT BUILD", "The updater is built in. Distribution requires hosted releases and a publisher signing key embedded at build time. Unsigned software updates are not allowed."));
         var save = Button("Save settings", "primary");
-        save.Click += async (_, _) => await Run("Saving settings", async () =>
+        save.Click += async (_, _) =>
         {
-            // Language can be saved even before a game folder has been configured.
-            var validated = string.IsNullOrWhiteSpace(path.Text) ? "" : AddonService.ValidateGame(path.Text);
-            var feedUrl = feed.Text?.Trim() ?? "";
-            if (feedUrl.Length > 0 && (!Uri.TryCreate(feedUrl, UriKind.Absolute, out var uri) || uri.Scheme != "https")) throw new IOException(Get("The update feed must use HTTPS."));
-            _settings.GamePath = validated; _settings.UpdateFeedUrl = feedUrl; _settings.CheckUpdatesAtStartup = automatic.IsChecked == true;
-            _settings.Language = LanguageCodes[Math.Max(0, language.SelectedIndex)];
-            _storage.SaveSettings(_settings);
-            SetLanguage(_settings.Language);
-            ApplyLanguage();
-            if (validated.Length > 0) await ReloadAsync();
-            else { _installed = []; _managed = new(); _patchStatus = new(false, null); }
-        });
+            var oldPath = _settings.GamePath;
+            await Run("Saving settings", async () =>
+            {
+                // Language can be saved even before a game folder has been configured.
+                var validated = string.IsNullOrWhiteSpace(path.Text) ? "" : AddonService.ValidateGame(path.Text);
+                var feedUrl = feed.Text?.Trim() ?? "";
+                if (feedUrl.Length > 0 && (!Uri.TryCreate(feedUrl, UriKind.Absolute, out var uri) || uri.Scheme != "https")) throw new IOException(Get("The update feed must use HTTPS."));
+                _settings.GamePath = validated; _settings.UpdateFeedUrl = feedUrl; _settings.CheckUpdatesAtStartup = automatic.IsChecked == true;
+                if (!string.Equals(oldPath, validated, StringComparison.OrdinalIgnoreCase))
+                {
+                    _availableAddonUpdates = []; _lastAddonCheck = null;
+                    var original = CatalogService.Load(); _catalog.Packages = original.Packages; _catalog.Files = original.Files;
+                }
+                _settings.Language = LanguageCodes[Math.Max(0, language.SelectedIndex)];
+                _storage.SaveSettings(_settings);
+                SetLanguage(_settings.Language);
+                ApplyLanguage();
+                if (validated.Length > 0) await ReloadAsync();
+                else { _installed = []; _managed = new(); _patchStatus = new(false, null); }
+            });
+            if (Program.SmokeTestOutput is null && _settings.GamePath.Length > 0 && !string.Equals(oldPath, _settings.GamePath, StringComparison.OrdinalIgnoreCase))
+                await CheckAddonUpdates();
+        };
         fields.Children.Add(save);
         var data = Button("Open data and logs"); data.Click += (_, _) => OpenFolder(_storage.Root); fields.Children.Add(data);
         _body.Children.Add(new ScrollViewer { Content = Card(fields) });
@@ -435,6 +472,8 @@ public sealed class MainWindow : Window
         var path = _settings.GamePath;
         var result = await Task.Run(() => (_addons.Scan(path), _addons.GetState(path)));
         _installed = result.Item1; _managed = result.Item2;
+        _availableAddonUpdates.RemoveAll(u => !u.Package.Folders.All(f => _installed.Any(a => a.Folder.Equals(f, StringComparison.OrdinalIgnoreCase)))
+            || _managed.Packages.Any(p => p.Id == u.Package.Id && p.Commit == u.Package.Commit));
         _patchStatus = Directory.Exists(Path.Combine(path, "Data")) ? await _patches.InspectAsync(path) : new(false, null);
         RenderList();
     }
@@ -445,6 +484,8 @@ public sealed class MainWindow : Window
         var directory = Path.GetDirectoryName(output)!;
         var stem = Path.GetFileNameWithoutExtension(output);
         var savedLanguage = _settings.Language;
+        var savedAddonUpdates = _availableAddonUpdates;
+        var savedAddonCheck = _lastAddonCheck;
         Directory.CreateDirectory(directory);
         void Capture(string path)
         {
@@ -501,15 +542,64 @@ public sealed class MainWindow : Window
                 if (_navigation.Bounds.Right > _update.Bounds.Left)
                     throw new InvalidOperationException("Navigation overlaps the update button at minimum window size: " + code);
                 Capture(Path.Combine(directory, stem + "-compact-" + code + ".png"));
+                // Inject a display-only proposal. Never check the network or invoke an installer in the smoke test.
+                _availableAddonUpdates = [new(_catalog.Packages[0], [], "1.0", false)];
+                _lastAddonCheck = new(_availableAddonUpdates, [], 1);
+                Navigate("My addons"); await Task.Delay(150);
+                if (!_updateAllAddons.IsVisible || _updateAllAddons.Content as string != Format("Update all addons ({0})", 1))
+                    throw new InvalidOperationException("Bulk addon update button is missing or not translated: " + code);
+                Capture(Path.Combine(directory, stem + "-addon-updates-" + code + ".png"));
+                _availableAddonUpdates = []; Navigate("My addons"); await Task.Delay(50);
+                if (_updateAllAddons.IsVisible) throw new InvalidOperationException("Bulk update button must be hidden without confirmed updates.");
             }
-            File.WriteAllText(Path.Combine(directory, stem + "-smoke.txt"), $"OK — English/French/Italian UI, window icon, 5 pages including HD/non-HD patches, search, community addons, minimum size {MinWidth}×{MinHeight}, {_installed.Count} addons detected, {_catalog.Packages.Count} packs. No game files modified.");
+            File.WriteAllText(Path.Combine(directory, stem + "-smoke.txt"), $"OK — English/French/Italian UI, window icon, 5 pages including HD/non-HD patches, search, community addons, bulk addon update button visibility and translation, minimum size {MinWidth}×{MinHeight}, {_installed.Count} addons detected, {_catalog.Packages.Count} packs. No game files modified.");
         }
         catch (Exception error)
         {
             Program.SmokeTestFailed = true;
             File.WriteAllText(Path.Combine(directory, stem + "-smoke-error.txt"), error.ToString());
         }
-        finally { _settings.Language = savedLanguage; SetLanguage(savedLanguage); Close(); }
+        finally { _availableAddonUpdates = savedAddonUpdates; _lastAddonCheck = savedAddonCheck; _settings.Language = savedLanguage; SetLanguage(savedLanguage); Close(); }
+    }
+
+    private async Task CheckAddonUpdates()
+    {
+        if (_busy) return;
+        await Run("Checking addon updates", async () =>
+        {
+            await ReloadAsync();
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_operation!.Token);
+            timeout.CancelAfter(TimeSpan.FromSeconds(90));
+            AddonUpdateCheck result;
+            try { result = await _addonUpdates.CheckAsync(_catalog, _managed, _installed, timeout.Token); }
+            catch (OperationCanceledException) when (!_operation.IsCancellationRequested)
+            { throw new TimeoutException(Get("The addon update check timed out. Try Refresh again later.")); }
+            _lastAddonCheck = result; _availableAddonUpdates = result.Updates;
+            foreach (var update in result.Updates) AddonUpdateService.Apply(_catalog, update);
+            foreach (var error in result.Errors) Log(error);
+        }, cancellable: true);
+    }
+
+    private async Task UpdateAllAddons()
+    {
+        if (_busy || _availableAddonUpdates.Count == 0) return;
+        try
+        {
+            var game = AddonService.ValidateGame(_settings.GamePath);
+            var updates = _availableAddonUpdates.ToList();
+            var message = string.Join("\n", updates.Select(u => $"{u.Package.Name}: {u.InstalledVersion} → {u.Package.Version} ({u.Package.Repository}@{u.Package.Commit[..8]})"));
+            var extra = updates.SelectMany(u => CatalogService.Resolve(_catalog, u.Package.Id)).DistinctBy(p => p.Id)
+                .Where(p => updates.All(u => u.Package.Id != p.Id) && !p.Folders.All(f => Directory.Exists(SafePath.Child(game, "Interface/AddOns/" + f)))).ToList();
+            if (extra.Count > 0) message += "\n\n" + Format("Required dependencies to install: {0}", string.Join(", ", extra.Select(p => p.Name)));
+            message += "\n\n" + Get("Close World of Warcraft first. All listed addons will be backed up and updated together. Manual addons in this list will become managed. WTF settings will be preserved.");
+            if (!await Confirm("Update all addons", message, "Back up and update all")) return;
+            await Run("Updating addons", async () =>
+            {
+                await _addons.InstallManyAsync(game, updates.Select(u => u.Package).ToList(), new Progress<string>(text => _status.Text = text), _operation!.Token);
+                await ReloadAsync();
+            }, cancellable: true);
+        }
+        catch (Exception error) { ReportError(error); }
     }
 
     private async Task InstallAddon(AddonPackage package)

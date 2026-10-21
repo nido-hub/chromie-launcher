@@ -7,7 +7,7 @@ namespace ChromieLauncher.Core;
 
 public sealed class AddonService(Storage storage, HttpClient http, Catalog catalog, Action? checkGameClosed = null)
 {
-    private static readonly HashSet<string> ForbiddenExtensions = new(StringComparer.OrdinalIgnoreCase)
+    internal static readonly HashSet<string> ForbiddenExtensions = new(StringComparer.OrdinalIgnoreCase)
         { ".exe", ".dll", ".bat", ".cmd", ".ps1", ".msi", ".com", ".scr", ".lnk", ".vbs" };
 
     public static string ValidateGame(string path)
@@ -64,16 +64,22 @@ public sealed class AddonService(Storage storage, HttpClient http, Catalog catal
         return result.OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 
-    public async Task InstallAsync(string gamePath, AddonPackage package, IProgress<string>? progress = null, CancellationToken token = default)
+    public Task InstallAsync(string gamePath, AddonPackage package, IProgress<string>? progress = null, CancellationToken token = default)
+        => InstallManyAsync(gamePath, [package], progress, token);
+
+    public async Task InstallManyAsync(string gamePath, IReadOnlyList<AddonPackage> requested, IProgress<string>? progress = null, CancellationToken token = default)
     {
+        if (requested.Count == 0) return;
         gamePath = ValidateGame(gamePath);
         (checkGameClosed ?? EnsureGameClosed)();
         using var operationLock = Lock(gamePath);
         Recover(gamePath);
         var state = GetState(gamePath);
-        var packages = CatalogService.Resolve(catalog, package.Id);
+        var selected = requested.Select(p => p.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var packages = requested.SelectMany(p => CatalogService.Resolve(catalog, p.Id)).DistinctBy(p => p.Id, StringComparer.OrdinalIgnoreCase).ToList();
         // Never downgrade an already installed dependency implicitly. Manual dependencies must be adopted explicitly.
-        packages = packages.Where(p => p.Id == package.Id || !p.Folders.All(f => Directory.Exists(SafePath.Child(gamePath, "Interface/AddOns/" + f)))).ToList();
+        packages = packages.Where(p => selected.Contains(p.Id) || !p.Folders.All(f => Directory.Exists(SafePath.Child(gamePath, "Interface/AddOns/" + f)))).ToList();
+        var label = string.Join(", ", requested.Select(p => p.Name));
         var folders = packages.SelectMany(p => p.Folders).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         foreach (var folder in folders) SafePath.FolderName(folder);
         var files = catalog.Files.Where(f => folders.Contains(f.Path.Split('/')[0], StringComparer.OrdinalIgnoreCase)).ToList();
@@ -95,7 +101,7 @@ public sealed class AddonService(Storage storage, HttpClient http, Catalog catal
                 var bytes = await DownloadBlob(file, ct);
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                 await File.WriteAllBytesAsync(destination, bytes, ct);
-                progress?.Report(LauncherText.Format("Downloading {0} · {1}/{2} files", package.Name, Interlocked.Increment(ref done), files.Count));
+                progress?.Report(LauncherText.Format("Downloading {0} · {1}/{2} files", label, Interlocked.Increment(ref done), files.Count));
             });
             foreach (var folder in folders)
             {
@@ -116,7 +122,7 @@ public sealed class AddonService(Storage storage, HttpClient http, Catalog catal
                 state.Packages.Add(new() { Id = p.Id, Commit = CatalogService.Revision(catalog, p), Folders = p.Folders.ToList() });
             }
             Commit(gamePath, work, folders, state, install: true);
-            progress?.Report(LauncherText.Format("{0} installed. Backup preserved.", package.Name));
+            progress?.Report(LauncherText.Format("{0} installed. Backup preserved.", label));
         }
         catch
         {

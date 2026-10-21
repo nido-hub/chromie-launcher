@@ -6,9 +6,9 @@ Application desktop Windows pour ChromieCraft / WoW **3.3.5a**, disponible en **
 
 Ouvrir **`dist\win-x64\ChromieLauncher.exe`**, ou double-cliquer sur **`Lancer ChromieLauncher.cmd`**. Le dossier du jeu est recherché dans les dossiers parents ; sinon le sélectionner dans **Settings**. Le launcher doit rester dans son propre dossier, pas directement à côté de `Wow.exe`.
 
-La release `0.3.0` est **compilée en Native AOT pour Windows x64**. Elle peut être lancée sans installer .NET. Télécharger le ZIP depuis les [releases GitHub](https://github.com/nido-hub/chromie-launcher/releases/latest) et conserver les DLL natives du dossier à côté de l’exécutable. Pour une compilation locale, utiliser les scripts ci-dessous.
+La release `0.4.0` est **compilée en Native AOT pour Windows x64**. Elle peut être lancée sans installer .NET. Télécharger le ZIP depuis les [releases GitHub](https://github.com/nido-hub/chromie-launcher/releases/latest) et conserver les DLL natives du dossier à côté de l’exécutable. Pour une compilation locale, utiliser les scripts ci-dessous.
 
-- **My addons** : détection des dossiers et métadonnées TOC, versions inconnues conservées comme telles, modules Blizzard masqués. Ouvrir ou retirer un addon.
+- **My addons** : détection des dossiers et métadonnées TOC, versions inconnues conservées comme telles, modules Blizzard masqués. Vérification en ligne au démarrage, mise à jour individuelle ou **Tout mettre à jour** après confirmation. Ouvrir ou retirer un addon.
 - **Library** : recherche, catégories, packs multi-dossiers, dépendances obligatoires, installation avec confirmation et dépôt d’origine visible.
 - **Client patches** : installation du Patch Y non-HD ou HD dans `Data`, téléchargement MEGA intégré, validation du type de client et sauvegarde avant remplacement.
 - **Downloads** : historique de session et accès aux sauvegardes. Annulation du téléchargement avant le remplacement des fichiers.
@@ -39,7 +39,20 @@ Le catalogue contient **133 packs, 247 dossiers et 7 473 fichiers** provenant de
 
 Les deux addons communautaires déclarent l’interface **30300** et sont disponibles dans la catégorie **ChromieCraft**. Ils ne font pas partie de l’archive historique WoWGaming. Seuls leurs fichiers d’exécution, médias et documentation sont téléchargés, pas leurs tests ni leurs métadonnées Git. Chaque source possède sa propre révision et ses propres empreintes Git. Cette vérification **ne constitue pas un test en jeu**. Les dépendances optionnelles ne sont pas installées automatiquement.
 
-Il n’y a **aucune mise à jour silencieuse des addons manuels**, ni de comparaison inventée entre leurs numéros de version et ceux du catalogue. Le bouton **Replace…** avertit du risque de rétrogradation. Une dépendance déjà présente intégralement n’est pas remplacée implicitement. Un addon géré est à jour **par rapport à sa révision figée**, pas par rapport à tous les dépôts existants sur Internet. Le catalogue change avec une nouvelle version du launcher ; il n’est pas encore synchronisé automatiquement avec les branches distantes.
+Il n’y a **aucune mise à jour silencieuse**. Le catalogue embarqué sert de base hors ligne ; les addons installés et reconnus sont aussi vérifiés en ligne au démarrage, indépendamment des mises à jour du logiciel launcher. **Actualiser** relance la détection locale et la vérification en ligne.
+
+### Mises à jour des addons
+
+- Sources vérifiées : **les dépôts GitHub déjà connus du catalogue** (WoWGaming, Chromie Wishlist et LootRolls), sur leur branche par défaut. Ce n’est pas une recherche universelle de toutes les variantes d’un addon sur Internet, ni uniquement une recherche des releases taguées. L’archive WoWGaming conserve son caractère historique.
+- **Addon géré** : la nouvelle révision doit descendre de la révision installée et modifier les fichiers du pack. Les changements sans modification du numéro TOC sont donc détectés ; un commit concernant seulement un autre addon ne déclenche pas de fausse mise à jour. Les historiques réécrits et les baisses de version numérique ne sont pas proposés.
+- **Addon manuel reconnu** : une proposition n’est faite que si tous les dossiers du pack sont présents et si leurs versions TOC numériques sont strictement plus anciennes. Les versions inconnues, personnalisées ou non comparables ne sont pas devinées. Après confirmation et installation, le pack devient géré par le launcher.
+- Un bouton **Mettre à jour** apparaît sur les addons concernés. **Tout mettre à jour (N)** apparaît sur les pages des addons lorsqu’au moins une mise à jour est confirmée, indépendamment de la recherche et de la catégorie sélectionnées. La confirmation récapitule les versions, les sources/révisions et les dépendances supplémentaires à installer.
+- La mise à jour groupée télécharge et valide tous les packs avant un remplacement transactionnel commun. Les anciens fichiers sont sauvegardés ; une annulation avant application ou une erreur de téléchargement laisse tous les packs intacts. Une erreur pendant le remplacement déclenche le retour arrière. Fermer WoW avant de confirmer. Les paramètres `WTF` restent inchangés.
+- Les dépendances déjà présentes et non sélectionnées ne sont pas remplacées implicitement. Les packs incomplets et les addons absents du catalogue ne sont pas adoptés par **Tout mettre à jour**. Le bouton **Remplacer…** reste une action manuelle distincte, avec avertissement du risque de rétrogradation.
+- Les fichiers restent téléchargés à une **révision exacte**, avec tailles et empreintes Git contrôlées. Les nouveaux TOC doivent déclarer une interface compatible ; les dispositions de fichiers non prises en charge et les dépendances requises inconnues sont refusées. Aucun code téléchargé n’est exécuté pendant la vérification.
+- La vérification ne modifie pas le jeu et ne nécessite pas de token GitHub. Hors ligne, en cas de quota GitHub ou d’erreur d’une source, le nombre d’erreurs est affiché et les détails sont disponibles au survol du bilan et dans les journaux. Une source inaccessible n’est pas déclarée à jour. La vérification est annulable et limitée à 90 secondes ; **Actualiser** permet de réessayer. Les résultats en ligne restent en mémoire pour la session.
+
+Le bouton **Mises à jour** dans la barre supérieure concerne toujours **le logiciel launcher**, pas les addons ; son flux signé n’est pas encore configuré pour la distribution.
 
 Les fichiers sont téléchargés à la révision exacte, avec vérification de leur taille et de leur empreinte Git. Aucun code d’addon n’est exécuté par le launcher. Pas de redistribution massive des sources ; les droits des auteurs restent applicables.
 
@@ -121,12 +134,12 @@ Le flux contient un manifeste **signé RSA / SHA-256**, avec version, URL HTTPS 
    ```
 
 2. Copier **uniquement la clé publique** dans `src/ChromieLauncher.Core/Data/update-public-key.pem`, puis compiler. Cette même clé doit être incluse dans toutes les releases. Ne jamais publier la clé privée.
-3. Publier le contenu de `dist\win-x64` à la racine d’un ZIP. Pour la version 0.3.0 :
+3. Publier le contenu de `dist\win-x64` à la racine d’un ZIP. Pour la version 0.4.0 :
 
    ```powershell
-   ./tools/publish.ps1 -Native -Version 0.3.0
-   Compress-Archive -Path dist\win-x64\* -DestinationPath ChromieLauncher-0.3.0-win-x64.zip
-   dotnet run --project tools/ChromieLauncher.Release -- sign ChromieLauncher-0.3.0-win-x64.zip https://example.org/ChromieLauncher-0.3.0-win-x64.zip 0.3.0 C:\MesCles\chromie.private.pem update.json "Notes de version"
+   ./tools/publish.ps1 -Native -Version 0.4.0
+   Compress-Archive -Path dist\win-x64\* -DestinationPath ChromieLauncher-0.4.0-win-x64.zip
+   dotnet run --project tools/ChromieLauncher.Release -- sign ChromieLauncher-0.4.0-win-x64.zip https://example.org/ChromieLauncher-0.4.0-win-x64.zip 0.4.0 C:\MesCles\chromie.private.pem update.json "Notes de version"
    ```
 
 4. Héberger le ZIP et `update.json` sur HTTPS (par exemple GitHub Releases), puis renseigner l’URL de `update.json` dans les paramètres. Utiliser une URL stable pour le manifeste (`releases/latest/download/update.json` sur GitHub).
@@ -148,4 +161,4 @@ Test visuel non destructif :
 dist\win-x64\ChromieLauncher.exe --smoke-test artifacts\desktop.png
 ```
 
-L’application s’ouvre, détecte les addons et le Patch Y en lecture seule, vérifie la langue mémorisée et l’icône de fenêtre, teste les cinq écrans, la confirmation HD/non-HD, la recherche des deux addons communautaires et la taille compacte dans les trois langues, capture son interface puis se ferme. Le test ne modifie pas la langue enregistrée. Aucun addon ou patch n’est installé automatiquement au démarrage.
+L’application s’ouvre, détecte les addons et le Patch Y en lecture seule, vérifie la langue mémorisée et l’icône de fenêtre, teste les cinq écrans, la confirmation HD/non-HD, la recherche des deux addons communautaires et la taille compacte dans les trois langues, capture son interface puis se ferme. Le test ne modifie pas la langue enregistrée et n’effectue pas la vérification réseau des addons. Aucun addon ou patch n’est installé automatiquement au démarrage.
