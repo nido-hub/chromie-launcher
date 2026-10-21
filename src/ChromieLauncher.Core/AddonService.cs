@@ -12,10 +12,10 @@ public sealed class AddonService(Storage storage, HttpClient http, Catalog catal
 
     public static string ValidateGame(string path)
     {
-        if (string.IsNullOrWhiteSpace(path)) throw new IOException("Sélectionne le dossier du jeu dans les paramètres.");
+        if (string.IsNullOrWhiteSpace(path)) throw new IOException("Select your game folder in Settings.");
         path = Path.GetFullPath(path).TrimEnd('\\', '/');
         SafePath.RejectLinks(path);
-        if (!File.Exists(Path.Combine(path, "Wow.exe"))) throw new IOException("Le dossier doit contenir Wow.exe.");
+        if (!File.Exists(Path.Combine(path, "Wow.exe"))) throw new IOException("The selected folder must contain Wow.exe.");
         _ = SafePath.Child(path, "Interface/AddOns");
         return path;
     }
@@ -25,7 +25,7 @@ public sealed class AddonService(Storage storage, HttpClient http, Catalog catal
         foreach (var process in Process.GetProcessesByName("Wow"))
         {
             using (process)
-                if (!process.HasExited) throw new IOException("Ferme World of Warcraft avant de modifier les addons.");
+                if (!process.HasExited) throw new IOException("Close World of Warcraft before changing game files or addons.");
         }
     }
 
@@ -33,7 +33,7 @@ public sealed class AddonService(Storage storage, HttpClient http, Catalog catal
     {
         var path = Path.Combine(storage.Profile(gamePath), "managed.json");
         return File.Exists(path) ? JsonSerializer.Deserialize(File.ReadAllText(path), AppJsonContext.Default.ManagedState)
-            ?? throw new InvalidDataException("État local invalide.") : new();
+            ?? throw new InvalidDataException("Invalid local addon state.") : new();
     }
 
     public List<InstalledAddon> Scan(string gamePath)
@@ -56,7 +56,7 @@ public sealed class AddonService(Storage storage, HttpClient http, Catalog catal
             result.Add(new InstalledAddon
             {
                 Folder = name, Name = TocReader.Clean(meta.GetValueOrDefault("Title", name)),
-                Version = meta.GetValueOrDefault("Version", "Inconnue"), Interface = meta.GetValueOrDefault("Interface", "Inconnue"),
+                Version = meta.GetValueOrDefault("Version", "Unknown"), Interface = meta.GetValueOrDefault("Interface", "Unknown"),
                 Dependencies = meta.GetValueOrDefault("Dependencies", meta.GetValueOrDefault("RequiredDeps", "")),
                 Managed = managed is not null, PackageId = managed?.Id ?? ""
             });
@@ -77,11 +77,11 @@ public sealed class AddonService(Storage storage, HttpClient http, Catalog catal
         var folders = packages.SelectMany(p => p.Folders).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         foreach (var folder in folders) SafePath.FolderName(folder);
         var files = catalog.Files.Where(f => folders.Contains(f.Path.Split('/')[0], StringComparer.OrdinalIgnoreCase)).ToList();
-        if (files.Count == 0 || files.Sum(f => f.Size) > 512L * 1024 * 1024) throw new InvalidDataException("Taille du paquet invalide.");
+        if (files.Count == 0 || files.Sum(f => f.Size) > 512L * 1024 * 1024) throw new InvalidDataException("Invalid package size.");
         foreach (var file in files)
         {
             if (file.Size < 0 || file.Size > 32 * 1024 * 1024 || ForbiddenExtensions.Contains(Path.GetExtension(file.Path)))
-                throw new InvalidDataException("Fichier non autorisé dans un addon : " + file.Path);
+                throw new InvalidDataException("File not allowed in an addon: " + file.Path);
         }
         var work = NewTransaction(gamePath);
         var stage = Path.Combine(work, "stage");
@@ -95,7 +95,7 @@ public sealed class AddonService(Storage storage, HttpClient http, Catalog catal
                 var bytes = await DownloadBlob(file, ct);
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                 await File.WriteAllBytesAsync(destination, bytes, ct);
-                progress?.Report($"Téléchargement de {package.Name} · {Interlocked.Increment(ref done)}/{files.Count} fichiers");
+                progress?.Report(LauncherText.Format("Downloading {0} · {1}/{2} files", package.Name, Interlocked.Increment(ref done), files.Count));
             });
             foreach (var folder in folders)
             {
@@ -105,18 +105,18 @@ public sealed class AddonService(Storage storage, HttpClient http, Catalog catal
                 var metadata = TocReader.Parse(await File.ReadAllTextAsync(toc, token));
                 foreach (var dependency in metadata.GetValueOrDefault("Dependencies", metadata.GetValueOrDefault("RequiredDeps", "")).Split([',', ' ', '\t'], StringSplitOptions.RemoveEmptyEntries))
                     if (!folders.Contains(dependency, StringComparer.OrdinalIgnoreCase) && !Directory.Exists(SafePath.Child(gamePath, "Interface/AddOns/" + dependency)))
-                        throw new InvalidDataException("Dépendance requise absente : " + dependency);
+                        throw new InvalidDataException("Required dependency is missing: " + dependency);
             }
             token.ThrowIfCancellationRequested();
             (checkGameClosed ?? EnsureGameClosed)();
-            progress?.Report("Sauvegarde et installation…");
+            progress?.Report(LauncherText.Get("Backing up and installing…"));
             foreach (var p in packages)
             {
                 state.Packages.RemoveAll(existing => existing.Id.Equals(p.Id, StringComparison.OrdinalIgnoreCase));
-                state.Packages.Add(new() { Id = p.Id, Commit = catalog.Commit, Folders = p.Folders.ToList() });
+                state.Packages.Add(new() { Id = p.Id, Commit = CatalogService.Revision(catalog, p), Folders = p.Folders.ToList() });
             }
             Commit(gamePath, work, folders, state, install: true);
-            progress?.Report(package.Name + " installé. Sauvegarde conservée.");
+            progress?.Report(LauncherText.Format("{0} installed. Backup preserved.", package.Name));
         }
         catch
         {
@@ -139,7 +139,7 @@ public sealed class AddonService(Storage storage, HttpClient http, Catalog catal
         var installed = Scan(gamePath);
         var dependents = installed.Where(a => !folders.Contains(a.Folder, StringComparer.OrdinalIgnoreCase) &&
             a.Dependencies.Split([',', ' ', '\t'], StringSplitOptions.RemoveEmptyEntries).Any(d => folders.Contains(d, StringComparer.OrdinalIgnoreCase))).Select(a => a.Name).ToList();
-        if (dependents.Count > 0) throw new IOException("Désinstallation bloquée : dépendances utilisées par " + string.Join(", ", dependents));
+        if (dependents.Count > 0) throw new IOException("Cannot remove dependencies used by " + string.Join(", ", dependents));
         if (package is not null) state.Packages.Remove(package);
         var work = NewTransaction(gamePath);
         try { Commit(gamePath, work, folders, state, install: false); }
@@ -151,7 +151,7 @@ public sealed class AddonService(Storage storage, HttpClient http, Catalog catal
     private FileStream Lock(string gamePath)
     {
         try { return new FileStream(Path.Combine(storage.Profile(gamePath), "operation.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
-        catch (IOException) { throw new IOException("Une autre opération sur ce jeu est déjà en cours."); }
+        catch (IOException) { throw new IOException("Another operation on this game is already in progress."); }
     }
 
     private static string NewTransaction(string gamePath)
@@ -196,7 +196,7 @@ public sealed class AddonService(Storage storage, HttpClient http, Catalog catal
             SafePath.RejectLinks(work);
             var journalPath = Path.Combine(work, "journal.json");
             if (!File.Exists(journalPath) || File.Exists(Path.Combine(work, "committed"))) continue;
-            var journal = JsonSerializer.Deserialize(File.ReadAllText(journalPath), AppJsonContext.Default.MutationJournal) ?? throw new InvalidDataException("Journal invalide.");
+            var journal = JsonSerializer.Deserialize(File.ReadAllText(journalPath), AppJsonContext.Default.MutationJournal) ?? throw new InvalidDataException("Invalid transaction journal.");
             foreach (var item in journal.Folders)
             {
                 SafePath.FolderName(item.Name);
@@ -216,16 +216,20 @@ public sealed class AddonService(Storage storage, HttpClient http, Catalog catal
 
     private async Task<byte[]> DownloadBlob(ArchiveFile file, CancellationToken token)
     {
-        if (file.Sha.Length != 40 || !file.Sha.All(Uri.IsHexDigit)) throw new InvalidDataException("Empreinte Git invalide.");
+        if (file.Sha.Length != 40 || !file.Sha.All(Uri.IsHexDigit)) throw new InvalidDataException("Invalid Git blob hash.");
+        var revision = string.IsNullOrEmpty(file.Commit) ? catalog.Commit : file.Commit;
+        if (revision.Length != 40 || !revision.All(Uri.IsHexDigit)) throw new InvalidDataException("Invalid catalog revision.");
+        CatalogService.ValidateRepository(file.Repository);
+        var sourcePath = string.IsNullOrEmpty(file.SourcePath) ? file.Path : file.SourcePath;
+        _ = SafePath.Child(storage.Root, sourcePath);
         var cache = Path.Combine(storage.Root, "cache", "blobs", file.Sha);
         if (File.Exists(cache))
         {
             var cached = await File.ReadAllBytesAsync(cache, token);
             if (VerifyBlob(cached, file.Sha) && cached.LongLength == file.Size) return cached;
         }
-        if (catalog.Commit.Length != 40 || !catalog.Commit.All(Uri.IsHexDigit)) throw new InvalidDataException("Révision de catalogue invalide.");
-        var urlPath = string.Join('/', file.Path.Split('/').Select(Uri.EscapeDataString));
-        using var response = await http.GetAsync($"https://raw.githubusercontent.com/wowgaming/addon-archive/{catalog.Commit}/{urlPath}", HttpCompletionOption.ResponseHeadersRead, token);
+        var urlPath = string.Join('/', sourcePath.Split('/').Select(Uri.EscapeDataString));
+        using var response = await http.GetAsync($"https://raw.githubusercontent.com/{file.Repository}/{revision}/{urlPath}", HttpCompletionOption.ResponseHeadersRead, token);
         response.EnsureSuccessStatusCode();
         using var input = await response.Content.ReadAsStreamAsync(token);
         using var output = new MemoryStream();
@@ -233,11 +237,11 @@ public sealed class AddonService(Storage storage, HttpClient http, Catalog catal
         int read;
         while ((read = await input.ReadAsync(buffer, token)) > 0)
         {
-            if (output.Length + read > file.Size) throw new InvalidDataException("Fichier téléchargé trop volumineux.");
+            if (output.Length + read > file.Size) throw new InvalidDataException("Downloaded file exceeds the expected size.");
             output.Write(buffer, 0, read);
         }
         var bytes = output.ToArray();
-        if (bytes.LongLength != file.Size || !VerifyBlob(bytes, file.Sha)) throw new InvalidDataException("Empreinte du téléchargement incorrecte : " + file.Path);
+        if (bytes.LongLength != file.Size || !VerifyBlob(bytes, file.Sha)) throw new InvalidDataException("Download integrity check failed: " + file.Path);
         Directory.CreateDirectory(Path.GetDirectoryName(cache)!);
         var temp = cache + "." + Guid.NewGuid().ToString("N");
         await File.WriteAllBytesAsync(temp, bytes, token);

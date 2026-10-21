@@ -47,11 +47,11 @@ public static class SafePath
         if (string.IsNullOrWhiteSpace(relative) || Path.IsPathRooted(relative) || relative.Contains(':') ||
             relative.Split('/', '\\').Any(p => p is ".." or "." or "" || IsDeviceName(p) || p.EndsWith('.') || p.EndsWith(' ') ||
                 p.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0))
-            throw new InvalidDataException("Chemin non autorisé : " + relative);
+            throw new InvalidDataException("Path is not allowed: " + relative);
         var fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         var result = Path.GetFullPath(Path.Combine(fullRoot, relative.Replace('/', Path.DirectorySeparatorChar)));
         if (!result.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("Le chemin sort du dossier autorisé.");
+            throw new InvalidDataException("Path is outside the allowed folder.");
         RejectLinks(result);
         return result;
     }
@@ -61,15 +61,15 @@ public static class SafePath
         for (var current = Path.GetFullPath(path); !string.IsNullOrEmpty(current); current = Path.GetDirectoryName(current))
             if ((File.Exists(current) || Directory.Exists(current)) &&
                 (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
-                throw new IOException("Les liens symboliques et jonctions ne sont pas autorisés : " + current);
+                throw new IOException("Symbolic links and junctions are not allowed: " + current);
     }
 
     public static void FolderName(string value)
     {
-        if (value.Contains('/') || value.Contains('\\')) throw new InvalidDataException("Nom de dossier invalide.");
+        if (value.Contains('/') || value.Contains('\\')) throw new InvalidDataException("Invalid folder name.");
         _ = Child(Path.GetTempPath(), value);
         if (value.StartsWith("Blizzard_", StringComparison.OrdinalIgnoreCase) || value.Equals("APIDocumentation", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("Un dossier du client ne peut pas être géré.");
+            throw new InvalidDataException("Game client folders cannot be managed.");
     }
 
     private static bool IsDeviceName(string value)

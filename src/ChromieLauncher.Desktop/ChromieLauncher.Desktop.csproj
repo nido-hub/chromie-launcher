@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <AssemblyName>ChromieLauncher</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets/chromiecraft.ico</ApplicationIcon>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <IsAotCompatible>true</IsAotCompatible>
     <PublishAot Condition="'$(NativeRelease)' == 'true'">true</PublishAot>

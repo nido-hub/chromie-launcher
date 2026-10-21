@@ -6,7 +6,7 @@
       "Id": "_NPCScan",
       "Name": "_NPCScan",
       "Category": "Interface",
-      "Description": "Analyse les PNJs autour de vous à la recherche de ceux qui sont rares.",
+      "Description": "Scans NPCs around you for rare ones.",
       "Version": "3.3.5.5",
       "Folders": [
         "_NPCScan"
@@ -16,8 +16,8 @@
     {
       "Id": "AckisRecipeList",
       "Name": "Ackis Recipe List 1.0",
-      "Category": "Sacs & économie",
-      "Description": "Ackis Recipe List est un addon qui analyse vos métiers et fournit des informations sur la façon d'obtenir les recettes manquantes. Il fonctionne pour tous les métiers, y compris Runeforge.",
+      "Category": "Bags & economy",
+      "Description": "Ackis Recipe List is an addon which will scan your trade skills and provide information on how to obtain recipes. It works for all tradeskills including Runeforging.",
       "Version": "1.0 2817",
       "Folders": [
         "AckisRecipeList"
@@ -62,7 +62,7 @@
     {
       "Id": "Altoholic",
       "Name": "Altoholic",
-      "Category": "Sacs & économie",
+      "Category": "Bags & economy",
       "Description": "Provides information about your alts",
       "Version": "3.3.002b",
       "Folders": [
@@ -77,7 +77,7 @@
       "Id": "Atlas",
       "Name": "Atlas",
       "Category": "Interface",
-      "Description": "Navigateur de cartes d'instances",
+      "Description": "Instance Map Browser",
       "Version": "1.17.0",
       "Folders": [
         "Atlas",
@@ -91,8 +91,8 @@
     {
       "Id": "AtlasLoot",
       "Name": "AtlasLoot",
-      "Category": "Équipement",
-      "Description": "Consulte les tables de butin des donjons, raids et métiers.",
+      "Category": "Equipment",
+      "Description": "Browse loot tables for dungeons, raids and professions.",
       "Version": "v5.11.04",
       "Folders": [
         "AtlasLoot",
@@ -120,8 +120,8 @@
     {
       "Id": "Bagnon",
       "Name": "Bagnon",
-      "Category": "Sacs & économie",
-      "Description": "Regroupe les sacs et la banque dans une interface unifiée.",
+      "Category": "Bags & economy",
+      "Description": "Combines bags and bank storage into a unified interface.",
       "Version": "2.12.6",
       "Folders": [
         "Bagnon",
@@ -135,7 +135,7 @@
     {
       "Id": "BankStack",
       "Name": "BankStack",
-      "Category": "Sacs & économie",
+      "Category": "Bags & economy",
       "Description": "From bags we came, to bank we return",
       "Version": "v17",
       "Folders": [
@@ -147,7 +147,7 @@
       "Id": "Bartender4",
       "Name": "Bartender4",
       "Category": "Interface",
-      "Description": "Personnalise et déplace les barres d’action.",
+      "Description": "Customize and move your action bars.",
       "Version": "4.4.2-12-g94f3b58",
       "Folders": [
         "Bartender4"
@@ -201,7 +201,7 @@
     {
       "Id": "Carbonite",
       "Name": "Carbonite 3.34",
-      "Category": "Quêtes & exploration",
+      "Category": "Quests & exploration",
       "Description": "Copyright 2007-2010 Carbon Based Creations, LLC",
       "Version": "3.34",
       "Folders": [
@@ -254,9 +254,24 @@
       "Dependencies": []
     },
     {
+      "Id": "ChromieWishlist",
+      "Name": "Chromie Wishlist",
+      "Category": "ChromieCraft",
+      "Description": "Track useful instance loot, manage your wishlist and import AtlasLoot wishlists. Includes loot alerts and custom sounds. Requires AtlasLoot.",
+      "Version": "1.2.0",
+      "Folders": [
+        "ChromieWishlist"
+      ],
+      "Dependencies": [
+        "AtlasLoot"
+      ],
+      "Repository": "nido-hub/chromie-wishlist",
+      "Commit": "0f9c0a09c1bce81248cd96b46398de1c662473f7"
+    },
+    {
       "Id": "ClassLoot",
       "Name": "ClassLoot",
-      "Category": "Équipement",
+      "Category": "Equipment",
       "Description": "Kaliban's Class Loot List Star Display",
       "Version": "r126",
       "Folders": [
@@ -280,7 +295,7 @@
       "Name": "Cooldowns 1.3.3",
       "Category": "Combat & raids",
       "Description": "Display cooldown counters on action buttons",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "Cooldowns"
       ],
@@ -338,8 +353,8 @@
       "Id": "DBM",
       "Name": "Deadly Boss Mods",
       "Category": "Combat & raids",
-      "Description": "Alertes de boss et modules de raids et donjons. Archive historique, pas la version spécifique actuelle de ChromieCraft.",
-      "Version": "Non renseignée",
+      "Description": "Boss alerts and raid/dungeon modules. Historical archive, not the current ChromieCraft-specific release.",
+      "Version": "Unknown",
       "Folders": [
         "DBM-AQ20",
         "DBM-AQ40",
@@ -376,7 +391,7 @@
       "Id": "Decursive",
       "Name": "Decursive  -Ace3-",
       "Category": "Combat & raids",
-      "Description": "Affichage et guérison des afflictions avec un système évolué de filtrage et de priorité.",
+      "Description": "Afflictions display and cleaning for solo, group and raids with advanced filtering and priority system.",
       "Version": "2.5.1-6-gd3885c5",
       "Folders": [
         "Decursive"
@@ -404,7 +419,7 @@
       "Name": "Doom_CooldownPulse",
       "Category": "Interface",
       "Description": "Flash an ability's icon in the middle of the screen when it comes off cooldown.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "Doom_CooldownPulse"
       ],
@@ -415,7 +430,7 @@
       "Name": "Dualspec Profiles",
       "Category": "Interface",
       "Description": "Automatically changes profiles when changing spec",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "Bartender4_Dualspec"
       ],
@@ -425,7 +440,7 @@
       "Id": "EasyLoot",
       "Name": "EasyLoot",
       "Category": "Interface",
-      "Description": "Addon de l’archive historique WoWGaming.",
+      "Description": "Addon from the historical WoWGaming archive.",
       "Version": "1.7.0.0",
       "Folders": [
         "EasyLoot"
@@ -446,8 +461,8 @@
     {
       "Id": "EquipCompare",
       "Name": "EquipCompare",
-      "Category": "Équipement",
-      "Description": "Permet de comparer facilement les items avec ceux que vous equipez (2.17)",
+      "Category": "Equipment",
+      "Description": "Compare items easily with ones you have equipped (2.17)",
       "Version": "2.17",
       "Folders": [
         "EquipCompare"
@@ -457,7 +472,7 @@
     {
       "Id": "EveryQuest",
       "Name": "EveryQuest2",
-      "Category": "Quêtes & exploration",
+      "Category": "Quests & exploration",
       "Description": "Quest History tracker and shows lists of quests in each category",
       "Version": "2.3r162",
       "Folders": [
@@ -591,7 +606,7 @@
       "Name": "Friend & Ignore Share v1.4.2",
       "Category": "Interface",
       "Description": "Synchronizes your friends and ignore lists across your alts.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "FriendShare"
       ],
@@ -600,9 +615,9 @@
     {
       "Id": "Gatherer",
       "Name": "Gatherer",
-      "Category": "Quêtes & exploration",
-      "Description": "Gatherer, affiche les objets recoltes dans la minicarte et la carte du monde",
-      "Version": "Non renseignée",
+      "Category": "Quests & exploration",
+      "Description": "Addon from the historical WoWGaming archive.",
+      "Version": "Unknown",
       "Folders": [
         "Gatherer",
         "Gatherer_HUD"
@@ -623,8 +638,8 @@
     {
       "Id": "GatherMate",
       "Name": "GatherMate",
-      "Category": "Quêtes & exploration",
-      "Description": "Enregistre les positions des herbes, mines, nuages de gaz et poissons et les ajoute sur la carte du monde et la minicarte.",
+      "Category": "Quests & exploration",
+      "Description": "Collects Herbs, Mines, Gas Clouds and Fishing locations and adds them to the worldmap and minimap",
       "Version": "v.1.25",
       "Folders": [
         "GatherMate",
@@ -635,7 +650,7 @@
     {
       "Id": "GearScoreLite",
       "Name": "GearScoreLite",
-      "Category": "Équipement",
+      "Category": "Equipment",
       "Description": "Quickly and easily judge a player's level of Gear.",
       "Version": "3.1.15",
       "Folders": [
@@ -646,7 +661,7 @@
     {
       "Id": "Gladius",
       "Name": "Gladius",
-      "Category": "JcJ",
+      "Category": "PvP",
       "Description": "Arena enemy unit frames",
       "Version": "v1.2.0",
       "Folders": [
@@ -669,7 +684,7 @@
       "Id": "GTFO",
       "Name": "GTFO",
       "Category": "Combat & raids",
-      "Description": "Alertes sonores lorsque le personnage se trouve dans une zone dangereuse.",
+      "Description": "Sound alerts when your character stands in a dangerous area.",
       "Version": "2.5.3",
       "Folders": [
         "GTFO"
@@ -692,7 +707,7 @@
       "Name": "Healium",
       "Category": "Combat & raids",
       "Description": "A healing user-interface addon that provides up to 15 customizable buttons next to each party or raid members name.  Based on FB Healbox.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "Healium"
       ],
@@ -724,7 +739,7 @@
     {
       "Id": "InterruptBar",
       "Name": "Interrupt Bar",
-      "Category": "JcJ",
+      "Category": "PvP",
       "Description": "Tracks interrupts",
       "Version": "1.18",
       "Folders": [
@@ -744,10 +759,23 @@
       "Dependencies": []
     },
     {
+      "Id": "LootSummary",
+      "Name": "LootRolls (LootSummary)",
+      "Category": "ChromieCraft",
+      "Description": "Retail-style loot window with active rolls, player decisions and session history. Installed as LootSummary; open it in game with /ls.",
+      "Version": "1.1.0",
+      "Folders": [
+        "LootSummary"
+      ],
+      "Dependencies": [],
+      "Repository": "nido-hub/loot-rolls",
+      "Commit": "48c0215a7bf50bd46468ce5b5849bf1ba84abeb4"
+    },
+    {
       "Id": "LoseControl",
       "Name": "LoseControl",
-      "Category": "JcJ",
-      "Description": "Montre la durée des effets de CC sur votre caractère",
+      "Category": "PvP",
+      "Description": "Displays the duration of CC effects on your character",
       "Version": "3.32",
       "Folders": [
         "LoseControl"
@@ -757,8 +785,8 @@
     {
       "Id": "Mapster",
       "Name": "Mapster",
-      "Category": "Quêtes & exploration",
-      "Description": "Simples modifications de la carte.",
+      "Category": "Quests & exploration",
+      "Description": "Simple Map Mod",
       "Version": "1.3.9",
       "Folders": [
         "Mapster"
@@ -781,7 +809,7 @@
       "Name": "Minimalist",
       "Category": "Interface",
       "Description": "A Collection of Automations and Interface Tweaks.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "Minimalist"
       ],
@@ -801,7 +829,7 @@
     {
       "Id": "MrTrader",
       "Name": "MrTrader",
-      "Category": "Sacs & économie",
+      "Category": "Bags & economy",
       "Description": "A lightweight addon that does something.",
       "Version": "0.5",
       "Folders": [
@@ -815,7 +843,7 @@
       "Name": "MSBT [Options]",
       "Category": "Interface",
       "Description": "Load on demand options for Mik's Scrolling Battle Text",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "MSBTOptions"
       ],
@@ -827,7 +855,7 @@
       "Id": "Necrosis",
       "Name": "Necrosis",
       "Category": "Interface",
-      "Description": "Gestion graphique des shards.",
+      "Description": "Warlock UI & Shard Management",
       "Version": "3.0 (r224)",
       "Folders": [
         "Necrosis"
@@ -838,7 +866,7 @@
       "Id": "Omen",
       "Name": "Omen3",
       "Category": "Combat & raids",
-      "Description": "Surveille la menace générée pendant les combats.",
+      "Description": "Monitor threat generated during combat.",
       "Version": "3.0.9",
       "Folders": [
         "Omen"
@@ -849,7 +877,7 @@
       "Id": "Ovale",
       "Name": "Ovale Spell Priority",
       "Category": "Interface",
-      "Description": "Affiche l'icône du prochain sort à lancer",
+      "Description": "Show the icon of the next spell to cast",
       "Version": "3.3.35",
       "Folders": [
         "Ovale"
@@ -921,8 +949,8 @@
     {
       "Id": "Postal",
       "Name": "Postal",
-      "Category": "Sacs & économie",
-      "Description": "Améliore la gestion du courrier en jeu.",
+      "Category": "Bags & economy",
+      "Description": "Improve in-game mail management.",
       "Version": "3.4.0",
       "Folders": [
         "Postal"
@@ -933,7 +961,7 @@
       "Id": "PowerAuras",
       "Name": "Power Auras Classic",
       "Category": "Combat & raids",
-      "Description": "Affiche des effets visuels autour du personnage.",
+      "Description": "Cool Effects around the player for ingame events.                                 Authors: |cff7f7fff-Sinsthar-, -Garstiger-, -Driizt-, and -Smacker-|r",
       "Version": "3.0.0S",
       "Folders": [
         "PowerAuras"
@@ -944,7 +972,7 @@
       "Id": "Prat-3.0",
       "Name": "Prat 3.0",
       "Category": "Interface",
-      "Description": "Framework pour des modules concernant les fen\\195\\170tres de discussion",
+      "Description": "A framework for chat ehancement modules.",
       "Version": "3.3.26",
       "Folders": [
         "Prat-3.0",
@@ -956,7 +984,7 @@
     {
       "Id": "Proximo",
       "Name": "Proximo",
-      "Category": "JcJ",
+      "Category": "PvP",
       "Description": "Simple enemy unit frames for Arena matches",
       "Version": "2.3",
       "Folders": [
@@ -968,7 +996,7 @@
       "Id": "Quartz",
       "Name": "Quartz",
       "Category": "Combat & raids",
-      "Description": "Barres d'incantation modulaires.",
+      "Description": "Modular casting bar.",
       "Version": "3.0.3.1",
       "Folders": [
         "Quartz"
@@ -978,8 +1006,8 @@
     {
       "Id": "QuestHelper",
       "Name": "QuestHelper",
-      "Category": "Quêtes & exploration",
-      "Description": "Aide au suivi des objectifs de quêtes et des déplacements.",
+      "Category": "Quests & exploration",
+      "Description": "Track quest objectives and plan your route.",
       "Version": "1.4.1",
       "Folders": [
         "QuestHelper"
@@ -1012,8 +1040,8 @@
       "Id": "Recount",
       "Name": "Recount",
       "Category": "Combat & raids",
-      "Description": "Analyse les dégâts, les soins et les statistiques de combat.",
-      "Version": "Non renseignée",
+      "Description": "Analyze damage, healing and combat statistics.",
+      "Version": "Unknown",
       "Folders": [
         "Recount"
       ],
@@ -1022,7 +1050,7 @@
     {
       "Id": "SellJunk",
       "Name": "SellJunk",
-      "Category": "Sacs & économie",
+      "Category": "Bags & economy",
       "Description": "Sells all junk in your inventory at once.",
       "Version": "2.6.3",
       "Folders": [
@@ -1035,7 +1063,7 @@
       "Name": "SexyMap",
       "Category": "Interface",
       "Description": "Spice up ye olde minimap with some sexytime options.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "SexyMap"
       ],
@@ -1046,7 +1074,7 @@
       "Name": "Shadowed UF (Options)",
       "Category": "Interface",
       "Description": "Configuration for Shadowed Unit Frames.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "ShadowedUF_Options"
       ],
@@ -1068,7 +1096,7 @@
     {
       "Id": "SilverDragon",
       "Name": "SilverDragon",
-      "Category": "Quêtes & exploration",
+      "Category": "Quests & exploration",
       "Description": "Remember where rares were",
       "Version": "v2.3.4",
       "Folders": [
@@ -1081,7 +1109,7 @@
       "Id": "Skada",
       "Name": "Skada",
       "Category": "Combat & raids",
-      "Description": "Compteurs modulaires de dégâts, soins et menace.",
+      "Description": "Modular damage, healing and threat meters.",
       "Version": "r301",
       "Folders": [
         "Skada"
@@ -1249,7 +1277,7 @@
       "Name": "Skillet  -Ace2-",
       "Category": "Interface",
       "Description": "A replacement tradeskill window",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "Skillet"
       ],
@@ -1306,7 +1334,7 @@
     {
       "Id": "TopFit",
       "Name": "TopFit",
-      "Category": "Équipement",
+      "Category": "Equipment",
       "Description": "Gear Optimization made easy",
       "Version": "3.3v6",
       "Folders": [
@@ -1317,7 +1345,7 @@
     {
       "Id": "TourGuide",
       "Name": "Tour Guide",
-      "Category": "Quêtes & exploration",
+      "Category": "Quests & exploration",
       "Description": "Powerleveling guide framework",
       "Version": "3.3.0.56",
       "Folders": [
@@ -1331,7 +1359,7 @@
       "Id": "Udw_Lib",
       "Name": "Udw_Lib",
       "Category": "Interface",
-      "Description": "Addon de l’archive historique WoWGaming.",
+      "Description": "Addon from the historical WoWGaming archive.",
       "Version": "0.0.1.0",
       "Folders": [
         "Udw_Lib"
@@ -1342,7 +1370,7 @@
       "Id": "Udw_LootTools",
       "Name": "Udw_LootTools",
       "Category": "Interface",
-      "Description": "Addon de l’archive historique WoWGaming.",
+      "Description": "Addon from the historical WoWGaming archive.",
       "Version": "0.0.2.5",
       "Folders": [
         "Udw_LootTools"
@@ -1389,7 +1417,7 @@
       "Name": "X-Perl Arcane Bars by Zek",
       "Category": "Interface",
       "Description": "Gives player, pet, target, focus and party frames a casting bar.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_ArcaneBar"
       ],
@@ -1402,7 +1430,7 @@
       "Name": "X-Perl Custom Highlight by Zek",
       "Category": "Interface",
       "Description": "Custom highlights module allowing definition of frame by frame indicator of important debuffs.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_CustomHighlight"
       ],
@@ -1415,7 +1443,7 @@
       "Name": "X-Perl Options by Zek (LoadOnDemand)",
       "Category": "Interface",
       "Description": "X-Perl Options GUI",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_Options"
       ],
@@ -1428,7 +1456,7 @@
       "Name": "X-Perl Party by Zek",
       "Category": "Interface",
       "Description": "Replaces the default party frames.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_Party"
       ],
@@ -1441,7 +1469,7 @@
       "Name": "X-Perl Party Pet by Zek",
       "Category": "Interface",
       "Description": "Replaces the default party's pet frames.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_PartyPet"
       ],
@@ -1455,7 +1483,7 @@
       "Name": "X-Perl Player Buffs by Zek",
       "Category": "Interface",
       "Description": "Gives buff icons on the X-Perl player frame.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_PlayerBuffs"
       ],
@@ -1468,7 +1496,7 @@
       "Name": "X-Perl Player by Zek",
       "Category": "Interface",
       "Description": "Replaces the default player frame.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_Player"
       ],
@@ -1481,7 +1509,7 @@
       "Name": "X-Perl Player Pet by Zek",
       "Category": "Interface",
       "Description": "Replaces the default player's pet frame.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_PlayerPet"
       ],
@@ -1495,7 +1523,7 @@
       "Name": "X-Perl Raid Admin by Zek",
       "Category": "Interface",
       "Description": "Provides useful raid admin tools for todays raid leader.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_RaidAdmin"
       ],
@@ -1508,7 +1536,7 @@
       "Name": "X-Perl Raid Helper by Zek",
       "Category": "Interface",
       "Description": "Replaces CTRA MT Targets window with extra functionality, and provides assists frame.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_RaidHelper"
       ],
@@ -1521,7 +1549,7 @@
       "Name": "X-Perl Raid Monitor by Zek",
       "Category": "Interface",
       "Description": "Provides a casting monitor and mana status window.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_RaidMonitor"
       ],
@@ -1534,7 +1562,7 @@
       "Name": "X-Perl Raid Pets by Zek",
       "Category": "Interface",
       "Description": "X-Perl Raid pets",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_RaidPets"
       ],
@@ -1547,7 +1575,7 @@
       "Name": "X-Perl RaidFrames by Zek",
       "Category": "Interface",
       "Description": "X-Perl Raid frames",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_RaidFrames"
       ],
@@ -1560,7 +1588,7 @@
       "Name": "X-Perl Target by Zek",
       "Category": "Interface",
       "Description": "Replaces the default target frame.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_Target"
       ],
@@ -1573,7 +1601,7 @@
       "Name": "X-Perl Target's Target by Zek",
       "Category": "Interface",
       "Description": "Replaces the default Target of Target frame.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_TargetTarget"
       ],
@@ -1587,7 +1615,7 @@
       "Name": "X-Perl Tutorial by Zek (LoadOnDemand)",
       "Category": "Interface",
       "Description": "Give Tutorial tips for new users.",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "XPerl_Tutorial"
       ],
@@ -1622,7 +1650,7 @@
       "Name": "Zanzer's Hunter Mod",
       "Category": "Interface",
       "Description": "Useful additions to make a Hunter's life even easier!",
-      "Version": "Non renseignée",
+      "Version": "Unknown",
       "Folders": [
         "ZHunterMod"
       ],
@@ -38934,6 +38962,102 @@
       "Path": "_NPCScan/_NPCScan.toc",
       "Sha": "fbd28fe04de0621d9608dfc40dc26eee1eb8cfe6",
       "Size": 1537
+    },
+    {
+      "Path": "ChromieWishlist/ChromieWishlist.toc",
+      "Sha": "73af704c0e12182987cdf445bbfd630fd19c4fa8",
+      "Size": 463,
+      "Repository": "nido-hub/chromie-wishlist",
+      "Commit": "0f9c0a09c1bce81248cd96b46398de1c662473f7",
+      "SourcePath": "ChromieWishlist.toc"
+    },
+    {
+      "Path": "ChromieWishlist/Core.lua",
+      "Sha": "00c1fa0238cf9d4b372e96e287c49e885061e901",
+      "Size": 40847,
+      "Repository": "nido-hub/chromie-wishlist",
+      "Commit": "0f9c0a09c1bce81248cd96b46398de1c662473f7",
+      "SourcePath": "Core.lua"
+    },
+    {
+      "Path": "ChromieWishlist/Import.lua",
+      "Sha": "728fe0c765ae974dfa94314c5f9d6ba8caffd77d",
+      "Size": 4660,
+      "Repository": "nido-hub/chromie-wishlist",
+      "Commit": "0f9c0a09c1bce81248cd96b46398de1c662473f7",
+      "SourcePath": "Import.lua"
+    },
+    {
+      "Path": "ChromieWishlist/Media/sound_addon.ogg",
+      "Sha": "252413fb58d830b44ffd997ab00ed22791b8a037",
+      "Size": 14190,
+      "Repository": "nido-hub/chromie-wishlist",
+      "Commit": "0f9c0a09c1bce81248cd96b46398de1c662473f7",
+      "SourcePath": "Media/sound_addon.ogg"
+    },
+    {
+      "Path": "ChromieWishlist/README.md",
+      "Sha": "6de3a21ef31a7e1c6d80880542add1c0a0f6efad",
+      "Size": 5276,
+      "Repository": "nido-hub/chromie-wishlist",
+      "Commit": "0f9c0a09c1bce81248cd96b46398de1c662473f7",
+      "SourcePath": "README.md"
+    },
+    {
+      "Path": "ChromieWishlist/UI.lua",
+      "Sha": "37f2733c51e5a7982b4d4a43b87f8fbfd8fad62d",
+      "Size": 30438,
+      "Repository": "nido-hub/chromie-wishlist",
+      "Commit": "0f9c0a09c1bce81248cd96b46398de1c662473f7",
+      "SourcePath": "UI.lua"
+    },
+    {
+      "Path": "LootSummary/Bindings.xml",
+      "Sha": "9b42e8a479fbc673ab6d9cc43be293a3f2109966",
+      "Size": 223,
+      "Repository": "nido-hub/loot-rolls",
+      "Commit": "48c0215a7bf50bd46468ce5b5849bf1ba84abeb4",
+      "SourcePath": "Bindings.xml"
+    },
+    {
+      "Path": "LootSummary/Core.lua",
+      "Sha": "085a1f0d2a3abf1d080dfaf37ae265d77197ff75",
+      "Size": 34182,
+      "Repository": "nido-hub/loot-rolls",
+      "Commit": "48c0215a7bf50bd46468ce5b5849bf1ba84abeb4",
+      "SourcePath": "Core.lua"
+    },
+    {
+      "Path": "LootSummary/Display.lua",
+      "Sha": "26cbdcb4ab00ed55c595a8325a4f87eb4df94a22",
+      "Size": 25305,
+      "Repository": "nido-hub/loot-rolls",
+      "Commit": "48c0215a7bf50bd46468ce5b5849bf1ba84abeb4",
+      "SourcePath": "Display.lua"
+    },
+    {
+      "Path": "LootSummary/LootSummary.toc",
+      "Sha": "aa8b3e032a1b3b4c8077643259c3cb81e38769da",
+      "Size": 424,
+      "Repository": "nido-hub/loot-rolls",
+      "Commit": "48c0215a7bf50bd46468ce5b5849bf1ba84abeb4",
+      "SourcePath": "LootSummary.toc"
+    },
+    {
+      "Path": "LootSummary/Options.lua",
+      "Sha": "b2b351acff77ea0b611b80eefb6c5bb1d080a95d",
+      "Size": 6631,
+      "Repository": "nido-hub/loot-rolls",
+      "Commit": "48c0215a7bf50bd46468ce5b5849bf1ba84abeb4",
+      "SourcePath": "Options.lua"
+    },
+    {
+      "Path": "LootSummary/README.md",
+      "Sha": "c8906645f61e027db4ef169a2cdaca8ba020b36e",
+      "Size": 2803,
+      "Repository": "nido-hub/loot-rolls",
+      "Commit": "48c0215a7bf50bd46468ce5b5849bf1ba84abeb4",
+      "SourcePath": "README.md"
     }
   ]
 }

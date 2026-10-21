@@ -4,6 +4,7 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="../../src/ChromieLauncher.Desktop/Assets/chromiecraft.ico" Link="Assets/chromiecraft.ico" CopyToOutputDirectory="PreserveNewest" />
     <ProjectReference Include="../../src/ChromieLauncher.Core/ChromieLauncher.Core.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />

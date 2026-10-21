@@ -22,7 +22,7 @@ public sealed class UpdateService(Storage storage, HttpClient http)
         using var response = await http.GetAsync(feedUrl, HttpCompletionOption.ResponseHeadersRead, token);
         response.EnsureSuccessStatusCode();
         var bytes = await ReadLimited(response.Content, 128 * 1024, token);
-        var envelope = JsonSerializer.Deserialize(bytes, AppJsonContext.Default.SignedUpdate) ?? throw new InvalidDataException("Flux de mise à jour invalide.");
+        var envelope = JsonSerializer.Deserialize(bytes, AppJsonContext.Default.SignedUpdate) ?? throw new InvalidDataException("Invalid update feed.");
         var release = VerifySigned(envelope, key);
         return Version.Parse(release.Version) > CurrentVersion ? (envelope, release) : null;
     }
@@ -30,10 +30,10 @@ public sealed class UpdateService(Storage storage, HttpClient http)
     public async Task<string> PrepareAsync(SignedUpdate envelope, IProgress<string>? progress = null, CancellationToken token = default)
     {
         var release = VerifySigned(envelope, PublicKey());
-        if (Version.Parse(release.Version) <= CurrentVersion) throw new InvalidDataException("Une ancienne version ne peut pas être installée.");
+        if (Version.Parse(release.Version) <= CurrentVersion) throw new InvalidDataException("An older version cannot be installed.");
         var directory = Path.Combine(storage.Root, "updates", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
-        progress?.Report("Téléchargement de la mise à jour " + release.Version + "…");
+        progress?.Report(LauncherText.Format("Downloading update {0}…", release.Version));
         using var response = await http.GetAsync(release.Url, HttpCompletionOption.ResponseHeadersRead, token);
         response.EnsureSuccessStatusCode();
         var zipPath = Path.Combine(directory, "package.zip");
@@ -46,7 +46,7 @@ public sealed class UpdateService(Storage storage, HttpClient http)
             while ((read = await input.ReadAsync(buffer, token)) > 0)
             {
                 size += read;
-                if (size > MaximumPackageSize) throw new InvalidDataException("Mise à jour trop volumineuse.");
+                if (size > MaximumPackageSize) throw new InvalidDataException("Update package is too large.");
                 await output.WriteAsync(buffer.AsMemory(0, read), token);
             }
         }
@@ -54,7 +54,7 @@ public sealed class UpdateService(Storage storage, HttpClient http)
         // Validate archive layout before asking the user to close the working application.
         ExtractPackage(zipPath, Path.Combine(directory, "validated"));
         Storage.AtomicWrite(Path.Combine(directory, "release.json"), JsonSerializer.Serialize(envelope, AppJsonContext.Default.SignedUpdate));
-        progress?.Report("Mise à jour vérifiée et prête à installer.");
+        progress?.Report(LauncherText.Get("Update verified and ready to install."));
         return directory;
     }
 
@@ -73,7 +73,7 @@ public sealed class UpdateService(Storage storage, HttpClient http)
         var start = new ProcessStartInfo(Path.Combine(helper, "ChromieLauncher.exe")) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = helper };
         start.ArgumentList.Add("--apply-update");
         start.ArgumentList.Add(directory);
-        using var helperProcess = Process.Start(start) ?? throw new IOException("Impossible de lancer la phase de remplacement.");
+        using var helperProcess = Process.Start(start) ?? throw new IOException("Could not start the update replacement phase.");
     }
 
     public static int Apply(string directory)
@@ -86,7 +86,7 @@ public sealed class UpdateService(Storage storage, HttpClient http)
         {
             SafePath.RejectLinks(directory);
             var job = JsonSerializer.Deserialize(File.ReadAllText(Path.Combine(directory, "job.json")), AppJsonContext.Default.UpdateJob)
-                ?? throw new InvalidDataException("Tâche de mise à jour invalide.");
+                ?? throw new InvalidDataException("Invalid update job.");
             target = Path.GetFullPath(job.TargetDirectory).TrimEnd('\\', '/');
             ValidateTarget(target);
             var release = ReadRelease(directory);
@@ -98,7 +98,7 @@ public sealed class UpdateService(Storage storage, HttpClient http)
             {
                 using var parent = Process.GetProcessById(job.ProcessId);
                 if (parent.StartTime.ToUniversalTime().Ticks == job.ProcessStartTicks && !parent.WaitForExit(60000))
-                    throw new IOException("Le launcher ne s’est pas fermé dans le délai prévu.");
+                    throw new IOException("The launcher did not close within the expected time.");
             }
             catch (ArgumentException) { /* Parent already exited. */ }
 
@@ -147,15 +147,15 @@ public sealed class UpdateService(Storage storage, HttpClient http)
 
     public static UpdateRelease VerifySigned(SignedUpdate envelope, string publicKey)
     {
-        if (envelope.Payload.Length > 100000 || envelope.Signature.Length > 2048) throw new InvalidDataException("Manifeste trop volumineux.");
+        if (envelope.Payload.Length > 100000 || envelope.Signature.Length > 2048) throw new InvalidDataException("Update manifest is too large.");
         var payload = Convert.FromBase64String(envelope.Payload);
         using var rsa = RSA.Create();
         rsa.ImportFromPem(publicKey);
         if (!rsa.VerifyData(payload, Convert.FromBase64String(envelope.Signature), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1))
-            throw new CryptographicException("Signature de mise à jour invalide. Installation refusée.");
-        var release = JsonSerializer.Deserialize(payload, AppJsonContext.Default.UpdateRelease) ?? throw new InvalidDataException("Manifeste invalide.");
+            throw new CryptographicException("Invalid update signature. Installation refused.");
+        var release = JsonSerializer.Deserialize(payload, AppJsonContext.Default.UpdateRelease) ?? throw new InvalidDataException("Invalid update manifest.");
         if (!Version.TryParse(release.Version, out _) || release.Sha256.Length != 64 || !release.Sha256.All(Uri.IsHexDigit))
-            throw new InvalidDataException("Version ou empreinte invalide.");
+            throw new InvalidDataException("Invalid update version or checksum.");
         RequireHttps(release.Url);
         return release;
     }
@@ -170,22 +170,22 @@ public sealed class UpdateService(Storage storage, HttpClient http)
             if (entry.FullName.EndsWith('/')) continue;
             total += entry.Length;
             if (total > 1024L * 1024 * 1024 || zip.Entries.Count > 5000 || ((entry.ExternalAttributes >> 16) & 0xF000) == 0xA000)
-                throw new InvalidDataException("Archive de mise à jour non autorisée.");
+                throw new InvalidDataException("Update archive is not allowed.");
             var path = SafePath.Child(destination, entry.FullName);
-            if (!seen.Add(path)) throw new InvalidDataException("Chemin dupliqué dans l’archive.");
+            if (!seen.Add(path)) throw new InvalidDataException("Duplicate path in update archive.");
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             entry.ExtractToFile(path, false);
         }
         if (!File.Exists(Path.Combine(destination, "ChromieLauncher.exe")))
-            throw new InvalidDataException("L’archive ne contient pas ChromieLauncher.exe à sa racine.");
+            throw new InvalidDataException("The archive must contain ChromieLauncher.exe at its root.");
     }
 
     private static UpdateRelease ReadRelease(string directory)
     {
         var envelope = JsonSerializer.Deserialize(File.ReadAllText(Path.Combine(directory, "release.json")), AppJsonContext.Default.SignedUpdate)
-            ?? throw new InvalidDataException("Manifeste absent.");
+            ?? throw new InvalidDataException("Update manifest is missing.");
         var release = VerifySigned(envelope, PublicKey());
-        if (Version.Parse(release.Version) <= CurrentVersion) throw new InvalidDataException("Retour à une ancienne version refusé.");
+        if (Version.Parse(release.Version) <= CurrentVersion) throw new InvalidDataException("Downgrading to an older version is not allowed.");
         return release;
     }
 
@@ -195,7 +195,7 @@ public sealed class UpdateService(Storage storage, HttpClient http)
         using var reader = new StreamReader(stream);
         var key = reader.ReadToEnd();
         if (string.IsNullOrWhiteSpace(key))
-            throw new InvalidOperationException("Les mises à jour du launcher ne sont pas encore publiées : la clé de signature de l’éditeur doit être intégrée à la compilation.");
+            throw new InvalidOperationException("Launcher updates are not available yet: the publisher's signing key must be embedded at build time.");
         return key;
     }
 
@@ -203,7 +203,7 @@ public sealed class UpdateService(Storage storage, HttpClient http)
     {
         SafePath.RejectLinks(target);
         if (!File.Exists(Path.Combine(target, "ChromieLauncher.exe")) || File.Exists(Path.Combine(target, "Wow.exe")) || Directory.Exists(Path.Combine(target, "Interface")))
-            throw new IOException("Le launcher doit être placé dans son propre dossier, distinct de la racine du jeu.");
+            throw new IOException("The launcher must be placed in its own folder, separate from the game root.");
     }
 
     private static void CopyDirectory(string source, string target)
@@ -222,13 +222,13 @@ public sealed class UpdateService(Storage storage, HttpClient http)
     {
         using var stream = File.OpenRead(path);
         if (!Convert.ToHexString(SHA256.HashData(stream)).Equals(expected, StringComparison.OrdinalIgnoreCase))
-            throw new CryptographicException("L’archive de mise à jour est corrompue. Installation refusée.");
+            throw new CryptographicException("The update archive is corrupted. Installation refused.");
     }
 
     private static void RequireHttps(string url)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != "https" || !string.IsNullOrEmpty(uri.UserInfo))
-            throw new InvalidDataException("Une adresse HTTPS est obligatoire.");
+            throw new InvalidDataException("An HTTPS URL is required.");
     }
 
     private static async Task<byte[]> ReadLimited(HttpContent content, int limit, CancellationToken token)
@@ -239,7 +239,7 @@ public sealed class UpdateService(Storage storage, HttpClient http)
         int read;
         while ((read = await input.ReadAsync(buffer, token)) > 0)
         {
-            if (output.Length + read > limit) throw new InvalidDataException("Réponse trop volumineuse.");
+            if (output.Length + read > limit) throw new InvalidDataException("Server response is too large.");
             output.Write(buffer, 0, read);
         }
         return output.ToArray();

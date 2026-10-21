@@ -14,11 +14,13 @@ internal static class Program
     {
         if (args.Length == 2 && args[0] == "--apply-update") return UpdateService.Apply(args[1]);
         if (args.Length == 2 && args[0] == "--smoke-test") SmokeTestOutput = args[1];
-        using var instance = new Mutex(true, "Local\\ChromieLauncher.Desktop", out var created);
+        var instanceName = SmokeTestOutput is null ? "Local\\ChromieLauncher.Desktop" : "Local\\ChromieLauncher.SmokeTest." + Guid.NewGuid().ToString("N");
+        using var instance = new Mutex(true, instanceName, out var created);
         if (!created) return 0;
         _instance = instance;
         try
         {
+            LauncherText.SetLanguage(new Storage().LoadSettings().Language);
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
             return SmokeTestFailed ? 1 : 0;
         }

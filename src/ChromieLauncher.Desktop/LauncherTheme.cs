@@ -21,6 +21,12 @@ internal static class LauncherTheme
     public static readonly IBrush Ice = Brush.Parse("#A0C9DA");
     public static readonly IBrush Success = Brush.Parse("#A2C7AE");
     private static readonly Dictionary<string, Bitmap> Bitmaps = [];
+    private static readonly Lazy<WindowIcon> Icon = new(() =>
+    {
+        using var stream = AssetLoader.Open(new Uri("avares://ChromieLauncher/Assets/chromiecraft.ico"));
+        return new WindowIcon(stream);
+    });
+    public static WindowIcon ApplicationIcon => Icon.Value;
 
     public static Bitmap Bitmap(string name)
     {

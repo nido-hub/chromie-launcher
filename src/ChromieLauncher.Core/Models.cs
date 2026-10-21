@@ -16,7 +16,9 @@ public sealed class AddonPackage
     public string Name { get; set; } = "";
     public string Category { get; set; } = "Interface";
     public string Description { get; set; } = "";
-    public string Version { get; set; } = "Version non renseignée";
+    public string Version { get; set; } = "Unknown";
+    public string Repository { get; set; } = "wowgaming/addon-archive";
+    public string Commit { get; set; } = "";
     public List<string> Folders { get; set; } = [];
     public List<string> Dependencies { get; set; } = [];
 }
@@ -26,22 +28,26 @@ public sealed class ArchiveFile
     public string Path { get; set; } = "";
     public string Sha { get; set; } = "";
     public long Size { get; set; }
+    public string Repository { get; set; } = "wowgaming/addon-archive";
+    public string Commit { get; set; } = "";
+    public string SourcePath { get; set; } = "";
 }
 
 public sealed class InstalledAddon
 {
     public string Folder { get; set; } = "";
     public string Name { get; set; } = "";
-    public string Version { get; set; } = "Inconnue";
+    public string Version { get; set; } = "Unknown";
     public string Interface { get; set; } = "";
     public string Dependencies { get; set; } = "";
     public bool Managed { get; set; }
     public string PackageId { get; set; } = "";
-    public string Status => Managed ? "Géré par le launcher" : "Installation manuelle";
+    public string Status => Managed ? "Managed by the launcher" : "Manually installed";
 }
 
 public sealed class Settings
 {
+    public string Language { get; set; } = "en";
     public string GamePath { get; set; } = "";
     public string UpdateFeedUrl { get; set; } = "";
     public bool CheckUpdatesAtStartup { get; set; } = true;
@@ -100,4 +106,6 @@ public sealed class MutationFolder
 [JsonSerializable(typeof(UpdateRelease))]
 [JsonSerializable(typeof(UpdateJob))]
 [JsonSerializable(typeof(MutationJournal))]
+[JsonSerializable(typeof(MegaRequest[]))]
+[JsonSerializable(typeof(PatchJournal))]
 public partial class AppJsonContext : JsonSerializerContext;

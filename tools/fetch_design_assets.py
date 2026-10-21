@@ -6,6 +6,7 @@ never requests images or fonts from the website at runtime. See Assets/NOTICE.md
 import io
 import pathlib
 import urllib.request
+import sys
 
 from PIL import Image
 from fontTools.ttLib import TTFont
@@ -21,6 +22,18 @@ ASSETS = {
     "Fonts/RobotoCondensed.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/robotocondensed/RobotoCondensed%5Bwght%5D.ttf",
     "Fonts/RobotoCondensed-OFL.txt": "https://raw.githubusercontent.com/google/fonts/main/ofl/robotocondensed/OFL.txt",
 }
+
+
+def create_icon(image):
+    image = image.convert("RGBA")
+    bounds = image.getbbox()
+    if bounds:
+        image = image.crop(bounds)
+    image.thumbnail((256, 256))
+    canvas = Image.new("RGBA", (256, 256))
+    canvas.alpha_composite(image, ((256 - image.width) // 2, (256 - image.height) // 2))
+    canvas.save(ROOT / "chromiecraft.ico", sizes=[(s, s) for s in (16, 20, 24, 32, 40, 48, 64, 128, 256)])
+    print("chromiecraft.ico: 9 embedded resolutions (16–256 px)")
 
 
 def main():
@@ -39,6 +52,8 @@ def main():
                 bounds = image.getbbox()
                 if bounds:
                     image = image.crop(bounds)
+                if name == "chromiecraft-emblem.png":
+                    create_icon(image.copy())
                 image.thumbnail((640, 320) if "wordmark" in name else (128, 128))
                 image.save(path, optimize=True)
             print(name, image.size, path.stat().st_size)
@@ -56,4 +71,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:] == ["--icon-only"]:
+        request = urllib.request.Request(ASSETS["chromiecraft-emblem.png"], headers={"User-Agent": "ChromieLauncher-Design/0.1"})
+        with urllib.request.urlopen(request, timeout=90) as response:
+            create_icon(Image.open(io.BytesIO(response.read())))
+    else:
+        main()

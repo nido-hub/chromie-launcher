@@ -187,7 +187,93 @@ public sealed class CoreTests : IDisposable
         WriteAddon("Blizzard_AuctionUI", "## Title: System");
         WriteAddon("Custom", "## Title: My custom addon");
         var addon = Assert.Single(_service.Scan(Game));
-        Assert.Equal("My custom addon", addon.Name); Assert.False(addon.Managed); Assert.Equal("Inconnue", addon.Version);
+        Assert.Equal("My custom addon", addon.Name); Assert.False(addon.Managed); Assert.Equal("Unknown", addon.Version);
+    }
+
+    [Fact]
+    public void CommunityCatalogUsesCorrectFoldersSourcesAndDependencies()
+    {
+        var catalog = CatalogService.Load();
+        var wishlist = Assert.Single(catalog.Packages, p => p.Id == "ChromieWishlist");
+        Assert.Equal("nido-hub/chromie-wishlist", wishlist.Repository);
+        Assert.Equal("1.2.0", wishlist.Version);
+        Assert.Contains("AtlasLoot", wishlist.Dependencies);
+        Assert.Contains(CatalogService.Resolve(catalog, wishlist.Id), p => p.Id == "AtlasLoot");
+        var rolls = Assert.Single(catalog.Packages, p => p.Id == "LootSummary");
+        Assert.Equal("nido-hub/loot-rolls", rolls.Repository);
+        Assert.Equal("1.1.0", rolls.Version);
+        Assert.Equal("LootSummary", Assert.Single(rolls.Folders));
+        foreach (var package in new[] { wishlist, rolls })
+        {
+            Assert.Equal("ChromieCraft", package.Category);
+            Assert.Equal(40, CatalogService.Revision(catalog, package).Length);
+            var files = catalog.Files.Where(f => f.Repository == package.Repository).ToList();
+            Assert.NotEmpty(files);
+            Assert.All(files, f => Assert.Equal(package.Commit, f.Commit));
+            Assert.DoesNotContain(files, f => f.SourcePath.StartsWith("Tests/") || f.SourcePath.StartsWith(".git"));
+            Assert.Contains(files, f => f.SourcePath == package.Id + ".toc" && f.Path == package.Id + "/" + package.Id + ".toc");
+        }
+    }
+
+    [Fact]
+    public async Task CommunityDownloadsUsePinnedRepositoryAndMapRootToAddonFolder()
+    {
+        var package = Package("Example");
+        package.Repository = "nido-hub/example"; package.Commit = new string('b', 40);
+        var file = Assert.Single(_catalog.Files);
+        file.Repository = package.Repository; file.Commit = package.Commit; file.SourcePath = "Example.toc";
+        string? requested = null;
+        using var http = new HttpClient(new FakeHandler(request =>
+        {
+            requested = request.RequestUri!.AbsoluteUri;
+            return new(HttpStatusCode.OK) { Content = new ByteArrayContent(_blobs["Example/Example.toc"]) };
+        }));
+        var service = new AddonService(_storage, http, _catalog, () => { });
+        await service.InstallAsync(Game, package);
+        Assert.Equal($"https://raw.githubusercontent.com/nido-hub/example/{package.Commit}/Example.toc", requested);
+        Assert.True(File.Exists(Toc("Example")));
+        Assert.Equal(package.Commit, Assert.Single(service.GetState(Game).Packages).Commit);
+        Assert.NotEqual(_catalog.Commit, Assert.Single(service.GetState(Game).Packages).Commit);
+    }
+
+    [Theory]
+    [InlineData("../example")]
+    [InlineData("https://example.com/repo")]
+    [InlineData("owner/repo/extra")]
+    [InlineData("owner/..")]
+    [InlineData("owner/repo?ref=main")]
+    public void InvalidRepositoriesAreRejected(string repository) => Assert.Throws<InvalidDataException>(() => CatalogService.ValidateRepository(repository));
+
+    [Fact]
+    public void DefaultLabelsAreEnglish()
+    {
+        Assert.Equal("Unknown", new AddonPackage().Version);
+        Assert.Equal("Unknown", new InstalledAddon().Version);
+        Assert.Equal("Manually installed", new InstalledAddon().Status);
+        Assert.Equal("Managed by the launcher", new InstalledAddon { Managed = true }.Status);
+        Assert.Equal("Select your game folder in Settings.", Assert.Throws<IOException>(() => AddonService.ValidateGame("")).Message);
+        var categories = CatalogService.Load().Packages.Select(p => p.Category).Distinct().ToList();
+        Assert.Contains("Equipment", categories); Assert.Contains("Bags & economy", categories);
+        Assert.DoesNotContain("Équipement", categories); Assert.DoesNotContain("JcJ", categories);
+    }
+
+    [Fact]
+    public void ApplicationIconIncludesTaskbarAndHighDpiResolutions()
+    {
+        var bytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Assets", "chromiecraft.ico"));
+        using var reader = new BinaryReader(new MemoryStream(bytes));
+        Assert.Equal(0, reader.ReadUInt16()); Assert.Equal(1, reader.ReadUInt16());
+        var count = reader.ReadUInt16(); Assert.Equal(9, count);
+        var sizes = new List<int>();
+        for (var i = 0; i < count; i++)
+        {
+            var width = reader.ReadByte(); var height = reader.ReadByte();
+            Assert.Equal(width, height); sizes.Add(width == 0 ? 256 : width);
+            reader.ReadBytes(6);
+            var length = reader.ReadUInt32(); var offset = reader.ReadUInt32();
+            Assert.True(length > 0 && offset + length <= bytes.Length);
+        }
+        Assert.Equal(new[] { 16, 20, 24, 32, 40, 48, 64, 128, 256 }, sizes.Order().ToArray());
     }
 
     [Fact]

@@ -1,0 +1,18 @@
+[
+  {
+    "Name": "Chromie Wishlist",
+    "Folder": "ChromieWishlist",
+    "Repository": "nido-hub/chromie-wishlist",
+    "Commit": "0f9c0a09c1bce81248cd96b46398de1c662473f7",
+    "Description": "Track useful instance loot, manage your wishlist and import AtlasLoot wishlists. Includes loot alerts and custom sounds. Requires AtlasLoot.",
+    "Include": ["ChromieWishlist.toc", "Core.lua", "Import.lua", "UI.lua", "Media/", "README.md", "LICENSE"]
+  },
+  {
+    "Name": "LootRolls (LootSummary)",
+    "Folder": "LootSummary",
+    "Repository": "nido-hub/loot-rolls",
+    "Commit": "48c0215a7bf50bd46468ce5b5849bf1ba84abeb4",
+    "Description": "Retail-style loot window with active rolls, player decisions and session history. Installed as LootSummary; open it in game with /ls.",
+    "Include": ["LootSummary.toc", "Bindings.xml", "Core.lua", "Display.lua", "Options.lua", "README.md", "LICENSE"]
+  }
+]

@@ -9,6 +9,7 @@ thin outlined buttons. Assets are bundled to support offline use.
 - `lich-background.jpg`: optimized JPEG of https://www.chromiecraft.com/wp-content/uploads/2025/08/Lich_Background_1920x1080.png
 - `chromiecraft-wordmark.png`: cropped/resized from https://www.chromiecraft.com/wp-content/uploads/2025/11/ChromieCraft-logo-hq.png
 - `chromiecraft-emblem.png`: converted/resized from https://www.chromiecraft.com/wp-content/uploads/2025/11/CC-new-navbar-logo.webp
+- `chromiecraft.ico`: the same emblem, padded to a square with 16, 20, 24, 32, 40, 48, 64, 128 and 256 px variants. Embedded in the Windows executable and used by application windows and the taskbar.
 
 These third-party visuals and trademarks belong to their respective owners.
 Their presence does not imply affiliation, endorsement, or a new license from

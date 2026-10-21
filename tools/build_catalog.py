@@ -9,6 +9,7 @@ import pathlib
 import re
 import urllib.request
 import urllib.parse
+import sys
 
 COMMIT = "f23627cf6cc3a353a96cb9240940ad33532a7c40"
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -62,22 +63,22 @@ def main():
         groups.setdefault(group(folder), []).append(folder)
     categories = {
         "Combat & raids": ["DBM", "Recount", "Skada", "Omen", "GTFO", "Grid", "HealBot", "Healium", "Clique", "Decursive", "RaidBuffStatus", "MikScrollingBattleText", "PowerAuras", "Cooldowns", "Quartz"],
-        "Quêtes & exploration": ["QuestHelper", "EveryQuest", "TomTomLite", "Carbonite", "Mapster", "Gatherer", "GatherMate", "TourGuide", "SilverDragon"],
-        "Sacs & économie": ["Bagnon", "BankStack", "Postal", "SellJunk", "Altoholic", "BeanCounter", "Informant", "Enchantrix", "AckisRecipeList", "MrTrader"],
-        "Équipement": ["AtlasLoot", "GearScore", "GearScoreLite", "ClassLoot", "Outfitter", "EquipCompare", "TopFit"],
-        "JcJ": ["Gladius", "Proximo", "InterruptBar", "LoseControl"],
+        "Quests & exploration": ["QuestHelper", "EveryQuest", "TomTomLite", "Carbonite", "Mapster", "Gatherer", "GatherMate", "TourGuide", "SilverDragon"],
+        "Bags & economy": ["Bagnon", "BankStack", "Postal", "SellJunk", "Altoholic", "BeanCounter", "Informant", "Enchantrix", "AckisRecipeList", "MrTrader"],
+        "Equipment": ["AtlasLoot", "GearScore", "GearScoreLite", "ClassLoot", "Outfitter", "EquipCompare", "TopFit"],
+        "PvP": ["Gladius", "Proximo", "InterruptBar", "LoseControl"],
     }
     descriptions = {
-        "DBM": "Alertes de boss et modules de raids et donjons. Archive historique, pas la version spécifique actuelle de ChromieCraft.",
-        "Bagnon": "Regroupe les sacs et la banque dans une interface unifiée.",
-        "AtlasLoot": "Consulte les tables de butin des donjons, raids et métiers.",
-        "Recount": "Analyse les dégâts, les soins et les statistiques de combat.",
-        "Skada": "Compteurs modulaires de dégâts, soins et menace.",
-        "Bartender4": "Personnalise et déplace les barres d’action.",
-        "QuestHelper": "Aide au suivi des objectifs de quêtes et des déplacements.",
-        "Postal": "Améliore la gestion du courrier en jeu.",
-        "Omen": "Surveille la menace générée pendant les combats.",
-        "GTFO": "Alertes sonores lorsque le personnage se trouve dans une zone dangereuse.",
+        "DBM": "Boss alerts and raid/dungeon modules. Historical archive, not the current ChromieCraft-specific release.",
+        "Bagnon": "Combines bags and bank storage into a unified interface.",
+        "AtlasLoot": "Browse loot tables for dungeons, raids and professions.",
+        "Recount": "Analyze damage, healing and combat statistics.",
+        "Skada": "Modular damage, healing and threat meters.",
+        "Bartender4": "Customize and move your action bars.",
+        "QuestHelper": "Track quest objectives and plan your route.",
+        "Postal": "Improve in-game mail management.",
+        "Omen": "Monitor threat generated during combat.",
+        "GTFO": "Sound alerts when your character stands in a dangerous area.",
     }
     packages = []
     for package_id, folders in groups.items():
@@ -90,11 +91,11 @@ def main():
                     dependencies.add(group(dependency))
         category = next((key for key, values in categories.items() if package_id in values), "Interface")
         if package_id.startswith("Auc-") or package_id in ("Stubby", "BonusScanner"):
-            category = "Sacs & économie"
+            category = "Bags & economy"
         name = re.sub(r"\|c[\da-fA-F]{8}|\|r", "", meta.get("title", package_id))
         packages.append({"Id": package_id, "Name": "Deadly Boss Mods" if package_id == "DBM" else name,
-                         "Category": category, "Description": descriptions.get(package_id, meta.get("notes-frfr", meta.get("notes", "Addon de l’archive historique WoWGaming."))),
-                         "Version": meta.get("version", "Non renseignée"), "Folders": folders, "Dependencies": sorted(dependencies)})
+                         "Category": category, "Description": descriptions.get(package_id, meta.get("notes", "Addon from the historical WoWGaming archive.")),
+                         "Version": meta.get("version", "Unknown"), "Folders": folders, "Dependencies": sorted(dependencies)})
     # Do not offer packages whose mandatory dependencies cannot be installed.
     while True:
         ids = {p["Id"] for p in packages}
@@ -105,11 +106,62 @@ def main():
     included = {folder for p in packages for folder in p["Folders"]}
     catalog = {"Commit": COMMIT, "Source": "https://wowgaming.github.io/addon-archive/", "Packages": sorted(packages, key=lambda p: p["Name"].casefold()),
                "Files": [{"Path": f["path"], "Sha": f["sha"], "Size": f["size"]} for f in files if f["path"].split("/")[0] in included and pathlib.PurePosixPath(f["path"]).suffix.lower() not in FORBIDDEN_EXTENSIONS]}
+    add_community_sources(catalog)
+    catalog["Packages"].sort(key=lambda p: p["Name"].casefold())
     output = ROOT / "src/ChromieLauncher.Core/Data/catalog.json"
     output.write_text(json.dumps(catalog, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"Catalogue: {len(packages)} packages, {len(included)} folders, {len(catalog['Files'])} files")
+    print(f"Catalog: {len(catalog['Packages'])} packages, {sum(len(p['Folders']) for p in catalog['Packages'])} folders, {len(catalog['Files'])} files")
     print(f"Excluded folders (incompatible TOC or missing dependencies): {len(tocs) - len(included)}")
 
 
+def add_community_sources(catalog):
+    sources = json.loads((ROOT / "tools/community-addons.json").read_text(encoding="utf-8"))
+    for source in sources:
+        repository, commit, folder = source["Repository"], source["Commit"], source["Folder"]
+        tree = json.loads(download(f"https://api.github.com/repos/{repository}/git/trees/{commit}?recursive=1"))
+        if tree.get("truncated"):
+            raise RuntimeError("Truncated community source tree: " + repository)
+        files = [file for file in tree["tree"] if file["type"] == "blob" and file.get("mode") == "100644" and any(
+            file["path"] == include or (include.endswith("/") and file["path"].startswith(include)) for include in source["Include"])]
+        toc = next(file for file in files if file["path"] == folder + ".toc")
+        data = download(f"https://raw.githubusercontent.com/{repository}/{commit}/{toc['path']}")
+        if hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest() != toc["sha"]:
+            raise RuntimeError("Community TOC hash mismatch")
+        metadata = dict((key.strip().lower(), value.strip()) for key, value in re.findall(r"^##\s*([^:\r\n]+):\s*(.*)$", data.decode("utf-8-sig"), re.M))
+        if metadata.get("interface") != "30300":
+            raise RuntimeError("Community addon must declare interface 30300")
+        dependencies = [value for value in re.split(r"[,\s]+", metadata.get("dependencies", metadata.get("requireddeps", ""))) if value]
+        for dependency in dependencies:
+            if not any(dependency in package["Folders"] for package in catalog["Packages"]):
+                raise RuntimeError("Missing community dependency: " + dependency)
+        catalog["Packages"].append({"Id": folder, "Name": source["Name"], "Category": "ChromieCraft", "Description": source["Description"],
+                                    "Version": metadata["version"], "Folders": [folder], "Dependencies": dependencies,
+                                    "Repository": repository, "Commit": commit})
+        for file in files:
+            if pathlib.PurePosixPath(file["path"]).suffix.lower() in FORBIDDEN_EXTENSIONS:
+                raise RuntimeError("Executable found in community addon")
+            catalog["Files"].append({"Path": folder + "/" + file["path"], "Sha": file["sha"], "Size": file["size"],
+                                     "Repository": repository, "Commit": commit, "SourcePath": file["path"]})
+        print(f"Community addon: {source['Name']} {metadata['version']} ({repository}@{commit[:8]}) — {len(files)} files")
+
+
+def verify_community_files():
+    catalog = json.loads((ROOT / "src/ChromieLauncher.Core/Data/catalog.json").read_text(encoding="utf-8"))
+    files = [file for file in catalog["Files"] if file.get("Repository")]
+    def verify(file):
+        path = urllib.parse.quote(file["SourcePath"], safe="/")
+        data = download(f"https://raw.githubusercontent.com/{file['Repository']}/{file['Commit']}/{path}")
+        sha = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
+        if len(data) != file["Size"] or sha != file["Sha"]:
+            raise RuntimeError("Invalid community file: " + file["Path"])
+        return len(data)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+        size = sum(pool.map(verify, files))
+    print(f"Verified {len(files)} community files ({size} bytes) at their pinned revisions. No game files modified.")
+
+
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:] == ["--verify-community"]:
+        verify_community_files()
+    else:
+        main()
