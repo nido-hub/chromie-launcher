@@ -49,6 +49,8 @@ jobs:
           } finally { if (Test-Path $key) { Remove-Item -LiteralPath $key -Force } }
       - name: Tests
         run: dotnet test tests/ChromieLauncher.Tests/ChromieLauncher.Tests.csproj -c Release
+      - name: Catalog generator tests
+        run: python -m unittest discover -s tools -p test_build_catalog.py
       - name: Compile Native AOT
         shell: pwsh
         env:

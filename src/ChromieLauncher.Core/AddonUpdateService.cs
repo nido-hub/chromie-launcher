@@ -11,7 +11,7 @@ public sealed record AddonUpdateCheck(List<AddonUpdate> Updates, List<string> Er
 public sealed class AddonUpdateService(HttpClient http)
 {
     private const string Archive = "wowgaming/addon-archive";
-    private sealed record Source(string Repository, string Folder, string[] Include);
+    private sealed record Source(string Repository, string Folder, string[] Include, string[] Folders, string Prefix, Dictionary<string, string> PathMappings);
     private sealed record TreeFile(string Path, string Sha, long Size, string Mode);
 
     public async Task<AddonUpdateCheck> CheckAsync(Catalog catalog, ManagedState managed, IReadOnlyList<InstalledAddon> installed,
@@ -43,7 +43,8 @@ public sealed class AddonUpdateService(HttpClient http)
                     {
                         var state = managed.Packages.FirstOrDefault(p => p.Id.Equals(package.Id, StringComparison.OrdinalIgnoreCase));
                         if (state?.Commit == revision) { checkedPackages++; continue; }
-                        var source = sources.SingleOrDefault(s => s.Repository == package.Repository && package.Folders.SequenceEqual(new[] { s.Folder }));
+                        var source = sources.SingleOrDefault(s => s.Repository == package.Repository && s.Folder == package.Id
+                            && package.Folders.SequenceEqual(s.Folders.Length == 0 ? [s.Folder] : s.Folders));
                         if (package.Repository != Archive && source is null) continue;
                         var files = SelectFiles(package, source, revision, tree);
                         if (state is not null)
@@ -75,7 +76,7 @@ public sealed class AddonUpdateService(HttpClient http)
                             TocReader.ValidateCompatibility(text);
                             foreach (var line in text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).Select(l => l.Trim()))
                             {
-                                if (line.Length == 0 || line.StartsWith('#')) continue;
+                                if (line.Length == 0 || line.StartsWith('#') || line.StartsWith("--", StringComparison.Ordinal)) continue;
                                 var path = folder + "/" + line.Replace('\\', '/');
                                 _ = SafePath.Child(Path.GetTempPath(), path);
                                 if (!files.Any(f => f.Path.Equals(path, StringComparison.OrdinalIgnoreCase)))
@@ -152,7 +153,11 @@ public sealed class AddonUpdateService(HttpClient http)
         using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("ChromieLauncher.Core.Data.community-addons.json")!;
         using var document = JsonDocument.Parse(stream);
         return document.RootElement.EnumerateArray().Select(s => new Source(s.GetProperty("Repository").GetString()!,
-            s.GetProperty("Folder").GetString()!, s.GetProperty("Include").EnumerateArray().Select(i => i.GetString()!).ToArray())).ToList();
+            s.GetProperty("Folder").GetString()!,
+            s.TryGetProperty("Include", out var include) ? include.EnumerateArray().Select(i => i.GetString()!).ToArray() : [],
+            s.TryGetProperty("Folders", out var folders) ? folders.EnumerateArray().Select(i => i.GetString()!).ToArray() : [],
+            s.TryGetProperty("Prefix", out var prefix) ? prefix.GetString()! : "",
+            s.TryGetProperty("PathMappings", out var mappings) ? mappings.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString()!) : [])).ToList();
     }
 
     private static List<ArchiveFile> SelectFiles(AddonPackage package, Source? source, string revision, List<TreeFile> tree)
@@ -161,15 +166,26 @@ public sealed class AddonUpdateService(HttpClient http)
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var file in tree)
         {
-            var included = source is null ? package.Folders.Contains(file.Path.Split('/')[0], StringComparer.OrdinalIgnoreCase)
+            var destination = source is null ? file.Path : source.Folders.Length > 0
+                ? file.Path.StartsWith(source.Prefix, StringComparison.Ordinal) ? file.Path[source.Prefix.Length..] : ""
+                : source.Folder + "/" + file.Path;
+            var included = source is null || source.Folders.Length > 0
+                ? package.Folders.Contains(destination.Split('/')[0], StringComparer.OrdinalIgnoreCase)
                 : source.Include.Any(i => i.EndsWith('/') ? file.Path.StartsWith(i, StringComparison.Ordinal) : file.Path == i)
                     || (!file.Path.Contains('/') && Path.GetExtension(file.Path).ToLowerInvariant() is ".lua" or ".xml" or ".toc");
             if (!included) continue;
-            if (AddonService.ForbiddenExtensions.Contains(Path.GetExtension(file.Path))) continue;
-            if (file.Mode != "100644" || file.Size < 0 || file.Size > 32 * 1024 * 1024)
-                throw new InvalidDataException("Unsupported source file: " + file.Path);
-            var destination = source is null ? file.Path : source.Folder + "/" + file.Path;
+            if (source is not null)
+                foreach (var mapping in source.PathMappings)
+                    if (destination.StartsWith(mapping.Key, StringComparison.Ordinal))
+                    { destination = mapping.Value + destination[mapping.Key.Length..]; break; }
             _ = SafePath.Child(Path.GetTempPath(), destination);
+            if (file.Path.Split('/').Any(p => p.StartsWith('.') || p.Equals("tests", StringComparison.OrdinalIgnoreCase) || p == "__pycache__")) continue;
+            if (AddonService.ForbiddenExtensions.Contains(Path.GetExtension(file.Path))) continue;
+            // Some backports mark ordinary Lua/media blobs executable; they are only downloaded as data.
+            var regular = file.Mode == "100644" || (source is not null && file.Mode == "100755"
+                && Path.GetExtension(file.Path).ToLowerInvariant() is ".lua" or ".xml" or ".toc" or ".ogg" or ".mp3" or ".blp" or ".tga");
+            if (!regular || file.Size < 0 || file.Size > 32 * 1024 * 1024)
+                throw new InvalidDataException("Unsupported source file: " + file.Path);
             ValidateHash(file.Sha);
             if (!paths.Add(destination)) throw new InvalidDataException("Duplicate source path: " + destination);
             result.Add(new() { Path = destination, SourcePath = file.Path, Repository = package.Repository, Commit = revision, Sha = file.Sha, Size = file.Size });

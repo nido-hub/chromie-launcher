@@ -116,33 +116,76 @@ def main():
 
 def add_community_sources(catalog):
     sources = json.loads((ROOT / "tools/community-addons.json").read_text(encoding="utf-8"))
+    # All owners must exist before resolving cross-source dependencies.
+    owners = {folder: package["Id"] for package in catalog["Packages"] for folder in package["Folders"]}
+    owners.update({folder: source["Folder"] for source in sources for folder in source.get("Folders", [source["Folder"]])})
     for source in sources:
         repository, commit, folder = source["Repository"], source["Commit"], source["Folder"]
+        folders = source.get("Folders", [folder])
+        prefix = source.get("Prefix", "")
         tree = json.loads(download(f"https://api.github.com/repos/{repository}/git/trees/{commit}?recursive=1"))
         if tree.get("truncated"):
             raise RuntimeError("Truncated community source tree: " + repository)
-        files = [file for file in tree["tree"] if file["type"] == "blob" and file.get("mode") == "100644" and any(
-            file["path"] == include or (include.endswith("/") and file["path"].startswith(include)) for include in source["Include"])]
-        toc = next(file for file in files if file["path"] == folder + ".toc")
-        data = download(f"https://raw.githubusercontent.com/{repository}/{commit}/{toc['path']}")
-        if hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest() != toc["sha"]:
-            raise RuntimeError("Community TOC hash mismatch")
-        metadata = dict((key.strip().lower(), value.strip()) for key, value in re.findall(r"^##\s*([^:\r\n]+):\s*(.*)$", data.decode("utf-8-sig"), re.M))
-        if metadata.get("interface") != "30300":
-            raise RuntimeError("Community addon must declare interface 30300")
-        dependencies = [value for value in re.split(r"[,\s]+", metadata.get("dependencies", metadata.get("requireddeps", ""))) if value]
-        for dependency in dependencies:
-            if not any(dependency in package["Folders"] for package in catalog["Packages"]):
-                raise RuntimeError("Missing community dependency: " + dependency)
-        catalog["Packages"].append({"Id": folder, "Name": source["Name"], "Category": "ChromieCraft", "Description": source["Description"],
-                                    "Version": metadata["version"], "Folders": [folder], "Dependencies": dependencies,
-                                    "Repository": repository, "Commit": commit})
+        files = []
+        for file in tree["tree"]:
+            path = file["path"]
+            if file["type"] == "tree" or any(p.startswith(".") or p.lower() == "tests" or p == "__pycache__" for p in path.split("/")):
+                continue
+            selected = (path.startswith(prefix) and path[len(prefix):].split("/")[0] in folders) if "Folders" in source else (
+                any(path == i or (i.endswith("/") and path.startswith(i)) for i in source.get("Include", []))
+                or ("/" not in path and pathlib.PurePosixPath(path).suffix.lower() in {".lua", ".xml", ".toc"}))
+            if not selected or pathlib.PurePosixPath(path).suffix.lower() in FORBIDDEN_EXTENSIONS:
+                continue
+            if file.get("mode") != "100644" and not (file.get("mode") == "100755" and pathlib.PurePosixPath(path).suffix.lower()
+                    in {".lua", ".xml", ".toc", ".ogg", ".mp3", ".blp", ".tga"}):
+                raise RuntimeError("Unsupported source mode: " + path)
+            files.append(file)
+        mapped = {}
+        paths = set()
         for file in files:
-            if pathlib.PurePosixPath(file["path"]).suffix.lower() in FORBIDDEN_EXTENSIONS:
-                raise RuntimeError("Executable found in community addon")
-            catalog["Files"].append({"Path": folder + "/" + file["path"], "Sha": file["sha"], "Size": file["size"],
+            destination = file["path"][len(prefix):] if "Folders" in source else folder + "/" + file["path"]
+            for old, new in source.get("PathMappings", {}).items():
+                if destination.startswith(old):
+                    destination = new + destination[len(old):]
+                    break
+            if destination.casefold() in paths:
+                raise RuntimeError("Duplicate destination: " + destination)
+            paths.add(destination.casefold())
+            mapped[destination] = file
+        metadata = {}
+        dependencies = set()
+        for current in folders:
+            toc = mapped[current + "/" + current + ".toc"]
+            url_path = urllib.parse.quote(toc["path"], safe="/")
+            data = download(f"https://raw.githubusercontent.com/{repository}/{commit}/{url_path}")
+            if hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest() != toc["sha"]:
+                raise RuntimeError("Community TOC hash mismatch")
+            text = data.decode("utf-8-sig")
+            meta = dict((key.strip().lower(), value.strip()) for key, value in re.findall(r"^##\s*([^:\r\n]+):\s*(.*)$", text, re.M))
+            if not any(v.isdigit() and 30000 <= int(v) <= 30300 for v in re.split(r"[,\s]+", meta.get("interface", ""))):
+                raise RuntimeError("Community addon must declare a compatible interface: " + current)
+            for line in text.splitlines():
+                line = line.strip()
+                if line and not line.startswith(("#", "--")) and (current + "/" + line.replace("\\", "/")).casefold() not in paths:
+                    raise RuntimeError("Missing TOC runtime file: " + current + "/" + line)
+            metadata[current] = meta
+            for dependency in re.split(r"[,\s]+", meta.get("dependencies", meta.get("requireddeps", ""))):
+                if not dependency or dependency in folders or dependency.startswith("Blizzard_"):
+                    continue
+                if dependency not in owners:
+                    raise RuntimeError("Missing community dependency: " + dependency)
+                dependencies.add(owners[dependency])
+        replaced = {f for p in catalog["Packages"] if p["Id"] == folder for f in p["Folders"]}
+        catalog["Packages"] = [p for p in catalog["Packages"] if p["Id"] != folder]
+        catalog["Files"] = [f for f in catalog["Files"] if f["Path"].split("/")[0] not in replaced]
+        version = metadata.get(folder, next((m for m in metadata.values() if "version" in m), {})).get("version", "Unknown")
+        catalog["Packages"].append({"Id": folder, "Name": source["Name"], "Category": source.get("Category", "ChromieCraft"), "Description": source["Description"],
+                                    "Version": version, "Folders": folders, "Dependencies": sorted(dependencies),
+                                    "Repository": repository, "Commit": commit})
+        for destination, file in mapped.items():
+            catalog["Files"].append({"Path": destination, "Sha": file["sha"], "Size": file["size"],
                                      "Repository": repository, "Commit": commit, "SourcePath": file["path"]})
-        print(f"Community addon: {source['Name']} {metadata['version']} ({repository}@{commit[:8]}) — {len(files)} files")
+        print(f"Community addon: {source['Name']} {version} ({repository}@{commit[:8]}) - {len(files)} files")
 
 
 def verify_community_files():

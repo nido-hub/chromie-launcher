@@ -249,12 +249,42 @@ public sealed class CoreTests : IDisposable
     }
 
     [Fact]
+    public void MinimapButtonFrameIncludesItsRequiredDataBrokerAtTheReferencedPath()
+    {
+        var catalog = CatalogService.Load();
+        Assert.Contains(catalog.Files, f => f.Path == "MinimapButtonFrame/libs/LibDataBroker-1.1/LibDataBroker-1.1.lua"
+            && f.SourcePath == "libs/libdatabroker-1-1/LibDataBroker-1.1.lua");
+    }
+
+    [Fact]
+    public void InstalledAddonFamiliesHavePinnedCatalogSources()
+    {
+        var catalog = CatalogService.Load();
+        foreach (var id in new[] { "Auctionator", "AwesomeCVar", "Binder", "Bistooltip", "Cheese", "ChromieCrafting",
+            "ChromiePlanner", "Flash", "Grid2", "Kui_Nameplates", "MRT", "MinimapButtonFrame",
+            "MinimapButtonFrame_SkinPack", "MySlot", "NiceDamage", "PlateCastBar", "WeakAuras" })
+        {
+            var package = Assert.Single(catalog.Packages, p => p.Id == id);
+            Assert.NotEqual("wowgaming/addon-archive", package.Repository);
+            Assert.Equal(40, package.Commit.Length);
+        }
+        var dbm = Assert.Single(catalog.Packages, p => p.Id == "DBM");
+        Assert.Equal("5Buttons/DBM-CC", dbm.Repository);
+        Assert.Equal(34, dbm.Folders.Count);
+        Assert.DoesNotContain("DBM-WorldEvents", dbm.Folders);
+        Assert.Contains("DBM-StatusBarTimers", dbm.Folders);
+        var weakAuras = Assert.Single(catalog.Packages, p => p.Id == "WeakAuras");
+        Assert.Equal(6, weakAuras.Folders.Count);
+        Assert.DoesNotContain("APIDocumentation", weakAuras.Folders);
+    }
+
+    [Fact]
     public void CommunityCatalogUsesCorrectFoldersSourcesAndDependencies()
     {
         var catalog = CatalogService.Load();
         var wishlist = Assert.Single(catalog.Packages, p => p.Id == "ChromieWishlist");
         Assert.Equal("nido-hub/chromie-wishlist", wishlist.Repository);
-        Assert.Equal("1.2.0", wishlist.Version);
+        Assert.Equal("1.2.2", wishlist.Version);
         Assert.Contains("AtlasLoot", wishlist.Dependencies);
         Assert.Contains(CatalogService.Resolve(catalog, wishlist.Id), p => p.Id == "AtlasLoot");
         var rolls = Assert.Single(catalog.Packages, p => p.Id == "LootSummary");

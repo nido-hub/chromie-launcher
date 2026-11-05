@@ -216,6 +216,56 @@ public sealed class AddonUpdateTests : IDisposable
         Assert.Contains(update.Files, f => f.SourcePath == "Core.lua");
     }
 
+    [Theory]
+    [InlineData("100644", true)]
+    [InlineData("100755", true)]
+    [InlineData("120000", false)]
+    [InlineData("160000", false)]
+    public async Task MultiFolderSourcePreservesPathsAndInternalDependencies(string mode, bool regularFile)
+    {
+        _mode = mode;
+        _package.Id = "Grid2"; _package.Name = "Grid2"; _package.Folders = ["Grid2", "Grid2Options", "Grid2AoeHeals"];
+        _package.Repository = "bkader/Grid2-WoTLK";
+        _state.Packages[0].Id = "Grid2"; _state.Packages[0].Folders = _package.Folders.ToList();
+        _installed.Clear();
+        foreach (var folder in _package.Folders) _installed.Add(new() { Folder = folder, Version = "1.0" });
+        foreach (var revision in new[] { Old, Next })
+        {
+            _files[revision] = [];
+            foreach (var folder in _package.Folders)
+            {
+                _files[revision][folder + "/" + folder + ".toc"] = Encoding.UTF8.GetBytes("## Interface: 30300\n## Version: " + (revision == Old ? "1.0" : "1.1") + "\n-- DBM-style comment\nCore.lua\n## Dependencies: Grid2");
+                _files[revision][folder + "/Core.lua"] = Encoding.UTF8.GetBytes("-- runtime");
+            }
+            _files[revision][".github/workflows/test.yml"] = [0];
+            _files[revision]["Other/Other.lua"] = [0];
+        }
+        var result = await Check();
+        if (!regularFile) { Assert.Empty(result.Updates); Assert.Single(result.Errors); return; }
+        Assert.Empty(result.Errors);
+        var update = Assert.Single(result.Updates);
+        Assert.Equal(6, update.Files.Count); Assert.Empty(update.Package.Dependencies);
+        Assert.All(update.Files, f => Assert.Equal(f.SourcePath, f.Path));
+    }
+
+    [Fact]
+    public async Task SourcePathMappingKeepsTheOriginalBlobButRepairsTheInstallPath()
+    {
+        _package.Id = "MinimapButtonFrame"; _package.Name = "MinimapButtonFrame"; _package.Folders = ["MinimapButtonFrame"];
+        _package.Repository = "Xurkon/MinimapButtonFrame";
+        _state.Packages[0].Id = "MinimapButtonFrame"; _state.Packages[0].Folders = _package.Folders.ToList();
+        _installed[0].Folder = "MinimapButtonFrame";
+        foreach (var revision in new[] { Old, Next })
+            _files[revision] = new()
+            {
+                ["MinimapButtonFrame.toc"] = Encoding.UTF8.GetBytes("## Interface: 30300\n## Version: " + (revision == Old ? "1.0" : "1.1")),
+                ["libs/libdatabroker-1-1/LibDataBroker-1.1.lua"] = Encoding.UTF8.GetBytes("-- library")
+            };
+        var update = Assert.Single((await Check()).Updates);
+        Assert.Contains(update.Files, f => f.Path == "MinimapButtonFrame/libs/LibDataBroker-1.1/LibDataBroker-1.1.lua"
+            && f.SourcePath == "libs/libdatabroker-1-1/LibDataBroker-1.1.lua");
+    }
+
     [Fact]
     public async Task SourceChecksAreDeduplicatedForSeveralInstalledPackages()
     {

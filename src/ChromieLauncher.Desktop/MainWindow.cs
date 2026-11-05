@@ -305,7 +305,7 @@ public sealed class MainWindow : Window
             {
                 Header = Heading(Get("CATALOG SOURCES"), 11, LauncherTheme.Gold),
                 HorizontalAlignment = HorizontalAlignment.Stretch,
-                Content = Notice("CATALOG SOURCES", "Historical addons come from the WoWGaming archive linked by ChromieCraft. Chromie Wishlist and LootRolls come directly from their GitHub repositories. Compatibility is declared, not guaranteed in game. Existing addons are never replaced automatically.")
+                Content = Notice("CATALOG SOURCES", "Historical addons come from the WoWGaming archive linked by ChromieCraft. Additional addons and WotLK backports come from their pinned GitHub repositories. Each pack shows its source. Compatibility is declared, not guaranteed in game. Existing addons are never replaced automatically.")
             });
         var toolbar = new Grid { ColumnDefinitions = new("*,Auto,Auto"), ColumnSpacing = 10 };
         _search.HorizontalAlignment = HorizontalAlignment.Stretch; toolbar.Children.Add(_search);

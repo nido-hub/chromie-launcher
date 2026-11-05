@@ -19,6 +19,8 @@ jobs:
           dotnet-version: 10.0.x
       - name: Tests
         run: dotnet test tests/ChromieLauncher.Tests/ChromieLauncher.Tests.csproj -c Release
+      - name: Catalog generator tests
+        run: python -m unittest discover -s tools -p test_build_catalog.py
       - name: Native AOT
         shell: pwsh
         run: ./tools/publish.ps1 -Native

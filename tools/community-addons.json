@@ -3,7 +3,7 @@
     "Name": "Chromie Wishlist",
     "Folder": "ChromieWishlist",
     "Repository": "nido-hub/chromie-wishlist",
-    "Commit": "0f9c0a09c1bce81248cd96b46398de1c662473f7",
+    "Commit": "0f92f9087d6822b6e4b667418efbbe01a87a25da",
     "Description": "Track useful instance loot, manage your wishlist and import AtlasLoot wishlists. Includes loot alerts and custom sounds. Requires AtlasLoot.",
     "Include": ["ChromieWishlist.toc", "Core.lua", "Import.lua", "UI.lua", "Media/", "README.md", "LICENSE"]
   },
@@ -14,5 +14,114 @@
     "Commit": "48c0215a7bf50bd46468ce5b5849bf1ba84abeb4",
     "Description": "Retail-style loot window with active rolls, player decisions and session history. Installed as LootSummary; open it in game with /ls.",
     "Include": ["LootSummary.toc", "Bindings.xml", "Core.lua", "Display.lua", "Options.lua", "README.md", "LICENSE"]
+  },
+  {
+    "Name": "Chromie Crafting", "Folder": "ChromieCrafting",
+    "Repository": "nido-hub/chromie-crafting", "Commit": "361960660ebf3e7aff00faf10520401f71c29874",
+    "Description": "Track account professions, recipes and materials on ChromieCraft.",
+    "Include": ["README.md", "CHANGELOG.md"]
+  },
+  {
+    "Name": "ChromiePlanner", "Folder": "ChromiePlanner",
+    "Repository": "nido-hub/chromie-planner", "Commit": "2670a502f23e23452c1451fe0fd7f65c290d6766",
+    "Description": "Plan equipment upgrades and character progression on ChromieCraft.",
+    "Include": ["Libs/", "README.md"]
+  },
+  {
+    "Name": "WeakAuras (WotLK)", "Folder": "WeakAuras", "Category": "Combat & raids",
+    "Repository": "NoM0Re/WeakAuras-WotLK", "Commit": "e40f6424644ed711fc27e8af20c9bed2b963b6aa",
+    "Description": "WotLK backport with options, templates, archive, model paths and stop-motion textures. Protected APIDocumentation is not installed.",
+    "Folders": ["WeakAuras", "WeakAurasArchive", "WeakAurasModelPaths", "WeakAurasOptions", "WeakAurasStopMotion", "WeakAurasTemplates"]
+  },
+  {
+    "Name": "Grid2 (WotLK)", "Folder": "Grid2", "Category": "Combat & raids",
+    "Repository": "bkader/Grid2-WoTLK", "Commit": "fc8d5e139b9490236b6676e1d891f98bfe4b2a10",
+    "Description": "Raid frames with configuration and area-of-effect healing modules for WotLK.",
+    "Folders": ["Grid2", "Grid2Options", "Grid2AoeHeals"]
+  },
+  {
+    "Name": "Kui Nameplates (WotLK)", "Folder": "Kui_Nameplates", "Category": "Combat & raids",
+    "Repository": "bkader/KuiNameplates-WoTLK", "Commit": "ad42794e2fa277adcfa887abfb1129c316838c59",
+    "Description": "WotLK nameplates and their aura module.",
+    "Folders": ["Kui_Nameplates", "Kui_Nameplates_Auras"]
+  },
+  {
+    "Name": "Method Raid Tools (WotLK)", "Folder": "MRT", "Category": "Combat & raids",
+    "Repository": "ExoJdi/Method-Raid-Tools-3.3.5a", "Commit": "55ee4a9d7425911842028b1beafabc23a090d235",
+    "Description": "Raid organization, notes and encounter tools backported to WotLK.",
+    "Folders": ["MRT"]
+  },
+  {
+    "Name": "Deadly Boss Mods (ChromieCraft)", "Folder": "DBM", "Category": "Combat & raids",
+    "Repository": "5Buttons/DBM-CC", "Commit": "d27931d0caac812afea2130419b82e0b575f4aa6",
+    "Description": "ChromieCraft/AzerothCore boss mods, raid/dungeon modules, timers and VEM voice pack. WorldEvents is excluded: its upstream TOC references a missing file. No existing addon is replaced automatically.",
+    "Folders": ["DBM-Core", "DBM-GUI", "DBM-StatusBarTimers", "DBM-AQ20", "DBM-AQ40", "DBM-Azeroth", "DBM-BWL", "DBM-BlackTemple", "DBM-ChamberOfAspects", "DBM-Coliseum", "DBM-EyeOfEternity", "DBM-Gruul", "DBM-Hyjal", "DBM-Icecrown", "DBM-Karazhan", "DBM-MC", "DBM-Magtheridon", "DBM-Naxx", "DBM-Onyxia", "DBM-Outland", "DBM-Party-BC", "DBM-Party-Classic", "DBM-Party-WotLK", "DBM-PvP", "DBM-Serpentshrine", "DBM-SpellTimers", "DBM-Sunwell", "DBM-TheEye", "DBM-Ulduar", "DBM-VPVEM", "DBM-VanillaOnyxia", "DBM-VoA", "DBM-ZG", "DBM-ZulAman"]
+  },
+  {
+    "Name": "Awesome CVar Manager", "Folder": "AwesomeCVar",
+    "Repository": "srazdokunebil/awesome_wotlk", "Commit": "7f5cd999bcf8a80ce13e328c81ccb1a99960a3c2",
+    "Description": "Configure AwesomeWotLK CVars. Requires an already patched compatible client; no DLL or client patch is installed.",
+    "Folders": ["AwesomeCVar"], "Prefix": "addons/"
+  },
+  {
+    "Name": "Flash", "Folder": "Flash",
+    "Repository": "srazdokunebil/awesome_wotlk", "Commit": "7f5cd999bcf8a80ce13e328c81ccb1a99960a3c2",
+    "Description": "Flash the game window on important events. Requires AwesomeWotLK/FlashWindow client support, not installed by this addon.",
+    "Folders": ["Flash"], "Prefix": "addons/"
+  },
+  {
+    "Name": "PlateCastBar (AwesomeWotLK)", "Folder": "PlateCastBar", "Category": "Combat & raids",
+    "Repository": "Macumbafeh/PlateCastBar_awesome_wotlk", "Commit": "7edd48669ce77c54b4fbee970a353d7135173179",
+    "Description": "Nameplate cast bars, including non-targeted units with an already installed AwesomeWotLK client patch.",
+    "Folders": ["PlateCastBar"]
+  },
+  {
+    "Name": "BiS-Tooltip (WotLK)", "Folder": "Bistooltip", "Category": "Equipment",
+    "Repository": "disruption01/BiS-Tooltip_335a_backport", "Commit": "a1d95a7065a2f96b05cda105debe05b25416dfea",
+    "Description": "Best-in-slot equipment lists and tooltip information backported to WoW 3.3.5a.",
+    "Folders": ["Bistooltip"]
+  },
+  {
+    "Name": "Auctionator (WotLK)", "Folder": "Auctionator", "Category": "Bags & economy",
+    "Repository": "jejkas/Auctionator", "Commit": "36a651c96e72c2f82729bb07cff4bcc63efd52dc",
+    "Description": "Historical Auctionator 2.6.3 for buying, selling and scanning auctions on WotLK.",
+    "Include": ["Images/", "Locales/", "README.md"]
+  },
+  {
+    "Name": "Cheese (WotLK, fixed)", "Folder": "Cheese", "Category": "Combat & raids",
+    "Repository": "hiroshi-richi/Cheese-Fixed", "Commit": "6f8a389ef7e28fec5e000cf5e8821969acd93052",
+    "Description": "Cataclysm-style spell proc alerts for WotLK, with upstream fixes.",
+    "Include": ["SpellActivationOverlay/", "Textures/", "README.md"]
+  },
+  {
+    "Name": "Minimap Button Frame", "Folder": "MinimapButtonFrame",
+    "Repository": "Xurkon/MinimapButtonFrame", "Commit": "63bbd858778d68c67506920d8569aaae806732a2",
+    "Description": "Collect minimap addon buttons into a movable frame. Historical WotLK source.",
+    "Include": ["Locale/", "Textures/", "libs/", "README.md", "Readme.txt", "Skinning.txt", "LICENSE"],
+    "PathMappings": {"MinimapButtonFrame/libs/libdatabroker-1-1/": "MinimapButtonFrame/libs/LibDataBroker-1.1/"}
+  },
+  {
+    "Name": "Minimap Button Frame Skin Pack", "Folder": "MinimapButtonFrame_SkinPack",
+    "Repository": "Xurkon/MinimapButtonFrame", "Commit": "63bbd858778d68c67506920d8569aaae806732a2",
+    "Description": "Optional historical skin pack for Minimap Button Frame.",
+    "Folders": ["MinimapButtonFrame_SkinPack"]
+  },
+  {
+    "Name": "Binder", "Folder": "Binder",
+    "Repository": "btrvarun/wotlk-addons", "Commit": "ff8c1025e3f260deba8030e924db7bfbc506574d",
+    "Description": "Historical Binder 2.1.0 keybinding profiles, preserved in a WotLK addon collection.",
+    "Folders": ["Binder"]
+  },
+  {
+    "Name": "NiceDamage (WotLK)", "Folder": "NiceDamage",
+    "Repository": "Evolvee/EvolvePWPUI-335a", "Commit": "436600d8513a633bbc57f7798fbde25317a689f6",
+    "Description": "Damage font replacement with a TOC declaring interface 30300. Different fonts/settings from other NiceDamage variants; replacement is manual.",
+    "Folders": ["NiceDamage"], "Prefix": "Interface/AddOns/"
+  },
+  {
+    "Name": "MySlot (historical WotLK)", "Folder": "MySlot",
+    "Repository": "Tarkusx/Myslot3.3.5a", "Commit": "0fee48b61b22055ae6d41ed579aaf4a95ab6ce11",
+    "Description": "Historical MySlot 3.3 action bars/keybindings import/export. Does not include local custom profile features; replacing a customized copy discards those code changes.",
+    "Folders": ["MySlot"]
   }
 ]
