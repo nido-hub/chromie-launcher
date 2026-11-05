@@ -34,7 +34,7 @@ Files: `tools/community-addons.json`, `tools/build_catalog.py`, `src/ChromieLaun
 Files: `Directory.Build.props`, `README.md`, `docs/releases/v0.4.3.md`.
 - [x] Update version, provenance, source coverage and release notes.
 - [x] Run all tests and Native AOT publication; desktop smoke test and package.
-- [ ] Review diff, commit/tag and publish through existing signed workflow when credentials permit; verify release assets or report the exact blocker.
+- [x] Review diff, commit/tag and publish through existing signed workflow when credentials permit; verify release assets or report the exact blocker.
 
 ## Execution ledger
 
@@ -52,3 +52,4 @@ Files: `Directory.Build.props`, `README.md`, `docs/releases/v0.4.3.md`.
 - Final: minor (deferred): upstream MBF locale.xml references missing optional Locale-esMX.lua; documented incomplete translation, no invented localized file.
 - Ruling: add PathMappings only for the proven MBF library mismatch — required for standalone loading; mappings apply to destinations only and retain path/duplicate/hash checks. All other source contents stay untouched.
 - Final local validation after the correction: Native AOT publish succeeds; desktop smoke test passes in all three languages (84 addons, 150 packs). Final local ZIP SHA-256 `c2bfa5d9119dccfb300631f9e649d137e179ae9df21b500c8398232be0fb4cae`. Signed release remains a separate workflow output, with its own verified manifest/checksum.
+- Task 3: complete. Source commit `8eb1e66`, tag `v0.4.3`, release branch preserved; main not merged. Signed release workflow [42053531293](https://github.com/nido-hub/chromie-launcher/actions/runs/42053531293) passed tests, Native AOT, desktop smoke, signing and publication. Downloaded all three published assets: RSA manifest verified with the embedded public key, ZIP integrity and both SHA-256 values agree (`a4cbad2493106c2add1aa4de2d8005f10b98e0ca5a4e86b55cff5105c127ab04`). GitHub latest and the default in-app feed both serve 0.4.3. No in-game validation or local addon replacement performed.
